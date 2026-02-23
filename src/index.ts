@@ -5,6 +5,7 @@ import {
   resolveProfile,
   resolveProfileConfig
 } from './profiles';
+import { createTokiPonaLocaleProfiles } from './presets';
 import type { SitelenLayerPluginConfig } from './types';
 
 export function createSitelenLayerPlugin(config: SitelenLayerPluginConfig = {}): SitelenLayerPlugin {
@@ -16,6 +17,7 @@ export {
   getEmojiMapping,
   setEmojiMapping,
   createSitelenLayerPluginFromProfiles,
+  createTokiPonaLocaleProfiles,
   resolveProfile,
   resolveProfileConfig
 };
@@ -32,6 +34,7 @@ export type {
   SitelenLayerProfile,
   SitelenLayerProfileMatch,
   SitelenPonaConfig,
-  SpaNavigationConfig
+  SpaNavigationConfig,
+  TokiPonaLocalePresetOptions
 } from './types';
 export type { EmojiEntry, NormalizedEmojiMapping } from './emoji/normalizeEmojiMapping';

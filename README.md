@@ -1,32 +1,12 @@
 # sitelen-layer-plugin
 
-Site-owner plugin for pages where toki pona already exists and dominates content.
+A **site-owner plugin** for pages that already contain toki pona content.
 
-This is **not a translator** and **not** a browser extension.
+It adds display layers for the same text:
 
-## Core Capabilities
-
-- Detects toki pona dominance by token ratio (default threshold `>= 70%`)
-- Shows layer toggle only when eligible (`requireDominantTokiPona=true`)
-- Supports 3 layers:
-  - `latin` (original text)
-  - `sitelen-emoji` (from `sitelen-emoji-truth` mapping)
-  - `sitelen-pona` (font/ligature pipeline)
-- Processes only text nodes (no OCR, no image text)
-- Persists selected layer in `localStorage`
-
-## Install
-
-```bash
-npm install sitelen-layer-plugin
-```
-
-Local development:
-
-```bash
-npm install
-npm run dev
-```
+- `latin`
+- `sitelen-pona` (font-based, recommended `nasin-sitelen-pu`)
+- `sitelen-emoji` (mapping-based)
 
 ## Quick Start
 
@@ -35,7 +15,7 @@ import { createSitelenLayerPlugin } from 'sitelen-layer-plugin';
 import 'sitelen-layer-plugin/styles.css';
 
 const plugin = createSitelenLayerPlugin({
-  container: '#tp-locale',
+  container: '#tok-content',
   threshold: 0.7,
   requireDominantTokiPona: true
 });
@@ -43,93 +23,94 @@ const plugin = createSitelenLayerPlugin({
 plugin.init();
 ```
 
-## Public API
+## Copy-Paste Integrations
 
-- `createSitelenLayerPlugin(config)`
-- `createSitelenLayerPluginFromProfiles(profiles, options)`
-- `plugin.init()`
-- `plugin.refresh()`
-- `plugin.destroy()`
-- `plugin.getDiagnostics()`
-- `plugin.showDiagnosticsOverlay()`
-- `plugin.hideDiagnosticsOverlay()`
-
-## Configuration
+### 1) Static landing page
 
 ```ts
+import { createSitelenLayerPlugin } from 'sitelen-layer-plugin';
+import 'sitelen-layer-plugin/styles.css';
+
 createSitelenLayerPlugin({
-  container?: string | Element,
-  threshold?: number,
-  layers?: ('latin' | 'sitelen-pona' | 'sitelen-emoji')[],
-  defaultLayer?: 'latin' | 'sitelen-pona' | 'sitelen-emoji',
-  showToggle?: boolean,
-  toggleMount?: string | Element,
-  excludeSelectors?: string[],
-  debug?: boolean,
-  debugOverlay?: boolean,
-  diagnosticsOverlay?: boolean,
-  storageKey?: string,
-  requireDominantTokiPona?: boolean,
-
-  observeMutations?: boolean, // backward-compatible shortcut
-  mutationDebounceMs?: number, // backward-compatible shortcut
-  mutationObserver?: {
-    enabled?: boolean,
-    debounceMs?: number,
-    incremental?: boolean,
-    observeAttributes?: boolean,
-    attributeFilter?: string[],
-    maxBatchNodes?: number
-  },
-
-  observeNavigation?: boolean, // backward-compatible shortcut
-  spaNavigation?: {
-    enabled?: boolean,
-    patchHistory?: boolean,
-    refreshDelayMs?: number
-  },
-
-  sitelenPona?: {
-    enabled?: boolean,
-    fontFamily?: string,
-    fontCssUrl?: string,
-    applyToRoot?: boolean,
-    className?: string,
-    renderStrategy?: 'font-only' | 'transform'
-  },
-
-  profileId?: string | null,
-  onProfileMatch?: (profileId: string | null) => void,
-  onEligibilityChange?: (eligible, diagnostics) => void,
-  onDiagnostics?: (diagnostics) => void,
-  onLayerChange?: (layer, diagnostics) => void
-})
+  container: '#landing-toki-pona',
+  defaultLayer: 'latin',
+  showToggle: true
+}).init();
 ```
 
-## SPA And Dynamic Content
+### 2) SPA-like page (route changes)
 
-Dynamic support is production-friendly and guard-railed:
+```ts
+import { createSitelenLayerPlugin } from 'sitelen-layer-plugin';
+import 'sitelen-layer-plugin/styles.css';
 
-- Mutation batching via `requestAnimationFrame`
-- Debounced full diagnostics refresh (`mutationObserver.debounceMs`)
-- Incremental subtree updates (`mutationObserver.incremental=true`) for newly added/changed nodes
-- Self-mutation guard prevents infinite observer loops when plugin updates text/class/UI
-- Optional navigation refresh support via:
-  - `spaNavigation.enabled`
-  - `popstate` + `hashchange`
-  - optional history patching (`pushState`/`replaceState`)
+const plugin = createSitelenLayerPlugin({
+  container: '#app-main',
+  mutationObserver: {
+    enabled: true,
+    incremental: true,
+    debounceMs: 140,
+    observeAttributes: false
+  },
+  spaNavigation: {
+    enabled: true,
+    patchHistory: true,
+    refreshDelayMs: 80
+  }
+});
 
-Notes:
+plugin.init();
+```
 
-- Incremental updates keep rendering responsive.
-- Full eligibility recalculation is still debounced for stability.
+### 2b) Auto TP locale profiles (preset helper)
 
-## Profiles (Site/Locale Presets)
+```ts
+import {
+  createSitelenLayerPluginFromProfiles,
+  createTokiPonaLocaleProfiles
+} from 'sitelen-layer-plugin';
+import 'sitelen-layer-plugin/styles.css';
 
-Use profiles to auto-apply config on specific host/path/locale segments.
+const profiles = createTokiPonaLocaleProfiles({
+  container: '#tp-content-scope',
+  tpPathPrefix: '/tp',
+  nonTpPathPrefix: '/en',
+  debug: true,
+  debugOverlay: true,
+  mutationObserver: {
+    enabled: true,
+    incremental: true,
+    observeAttributes: false,
+    debounceMs: 140
+  },
+  sitelenPona: {
+    fontCssUrl: 'https://cdn.jsdelivr.net/gh/ETBCOR/nasin-sitelen-pu@latest/nasin-sitelen-pu.css',
+    className: 'my-sitelen-pona-layer'
+  }
+});
+
+createSitelenLayerPluginFromProfiles(profiles).init();
+```
+
+### 3) Explicit scope with `data-sitelen-layer-scope`
+
+```html
+<main id="content">
+  <section data-sitelen-layer-scope>
+    <!-- only this subtree is analyzed/transformed -->
+  </section>
+</main>
+```
+
+```ts
+createSitelenLayerPlugin({ container: '#content' }).init();
+```
+
+## Profiles Example
 
 ```ts
 import { createSitelenLayerPluginFromProfiles } from 'sitelen-layer-plugin';
+import 'sitelen-layer-plugin/styles.css';
 
 const plugin = createSitelenLayerPluginFromProfiles(
   [
@@ -140,140 +121,170 @@ const plugin = createSitelenLayerPluginFromProfiles(
       config: {
         container: '#tok-content',
         defaultLayer: 'sitelen-emoji',
-        mutationObserver: { enabled: true, incremental: true }
+        showToggle: true
       }
     },
     {
       id: 'en-locale',
       priority: 10,
       match: { pathnamePrefix: '/en/' },
-      config: { showToggle: false }
+      config: {
+        container: '#en-content',
+        showToggle: false
+      }
     }
   ],
   {
     baseConfig: {
       threshold: 0.7,
-      onProfileMatch: (id) => console.log('profile:', id)
+      onProfileMatch: (id) => console.log('matched profile:', id)
     }
   }
 );
+
+plugin.init();
 ```
 
-Profile matching supports:
+Matching priority: highest `priority` wins among matched profiles.
 
-- `hostname`
-- `pathnamePrefix`
-- `pathnameRegex`
-- `lang`
-- `priority`
+## Example: Real Project Integration
 
-## Sitelen Emoji Mapping Source
+Project: **toki-free-kit (ABVX)**
 
-Canonical source for this project:
+- Live TP locale: <https://toki-free.abvx.xyz/tp>
+- Repo: <https://github.com/markoblogo/toki-free-kit>
 
-- `markoblogo/sitelen-emoji-truth`
+What this integration demonstrates:
 
-Local frozen snapshot:
+- toki pona-dominant eligibility flow
+- layer switching (`latin` / `sitelen-pona` / `sitelen-emoji`)
+- profile-based activation for `/tp`
+- debug diagnostics during integration and tuning
 
-- `vendor/sitelen-emoji-truth/default-stable.v1.json`
+Important: `sitelen-layer-plugin` is a **display-layer plugin** for existing toki pona content, not a machine translation system.
 
-Generated runtime mapping:
+## Tested Integrations
 
-- `src/generated/emojiMapping.generated.ts`
+- [toki-free-kit](https://github.com/markoblogo/toki-free-kit) — `/tp` locale showcase with profile-based activation.
 
-Update mapping:
+## Sitelen Pona Font Config Example
 
-```bash
-npm run emoji:update
+```ts
+createSitelenLayerPlugin({
+  container: '#tok-content',
+  sitelenPona: {
+    enabled: true,
+    fontFamily: "'nasin-sitelen-pu', 'Noto Sans', sans-serif",
+    fontCssUrl: 'https://example.com/fonts/nasin-sitelen-pu.css',
+    className: 'my-sitelen-pona-layer',
+    renderStrategy: 'font-only'
+  }
+}).init();
 ```
 
-If upstream format changes, adapt:
+## What This Does NOT Do
 
-- `src/emoji/normalizeEmojiMapping.ts`
-- `scripts/update-emoji-mapping.mjs`
+- Does **not** translate from other languages into toki pona.
+- Does **not** process text in images / OCR.
+- Is **not** a browser extension for arbitrary third-party sites.
+- Does **not** guarantee perfect typography on every site without CSS tuning.
 
-## Sitelen Pona Rendering
+## Troubleshooting Sitelen Pona Font
 
-MVP+ uses **font-only ligature path** by default:
+Common issues:
 
-- original DOM text remains latin toki pona
-- rendering switches by class + `font-family`
-- recommended font: `nasin-sitelen-pu`
+- `fontCssUrl` blocked by CSP.
+- Font file loads but CSS specificity prevents application.
+- Font loaded, but custom site CSS overrides plugin class.
+- Font readiness is false in diagnostics/overlay.
 
-You can provide `fontCssUrl` for automatic `<link>` injection (deduplicated), or preload font manually.
+Checklist:
 
-If font is not ready and `renderStrategy='font-only'`, sitelen-pona layer is disabled (non-fatal) with debug warning.
+1. Verify font URL is allowed by your CSP.
+2. Check network panel for font/CSS responses.
+3. Confirm diagnostics shows `sitelenPonaFontReady: true`.
+4. Apply stronger CSS selector with custom class.
+
+Example with stronger specificity:
+
+```css
+/* plugin config: sitelenPona.className = "my-sitelen-pona-layer" */
+#tok-content.my-sitelen-pona-layer,
+#tok-content.my-sitelen-pona-layer * {
+  font-family: 'nasin-sitelen-pu', 'Noto Sans', sans-serif !important;
+  font-variant-ligatures: common-ligatures discretionary-ligatures;
+}
+```
+
+## SPA / Observer Recommendations
+
+- Use `mutationObserver.incremental=true` for frequent append/replace UI updates.
+- Keep `observeAttributes=false` unless attribute changes materially alter text eligibility.
+- Prefer explicit `refresh()` on known route hooks for large route transitions.
+- Keep observer settings moderate by default; avoid aggressive full rescans.
+
+## Public API
+
+- `createSitelenLayerPlugin(config)`
+- `createSitelenLayerPluginFromProfiles(profiles, options)`
+- `plugin.init()`
+- `plugin.refresh()`
+- `plugin.destroy()`
+- `plugin.getDiagnostics()`
+- `plugin.showDiagnosticsOverlay()` / `plugin.hideDiagnosticsOverlay()`
+
+## Package Usage
+
+```ts
+import { createSitelenLayerPlugin } from 'sitelen-layer-plugin';
+import { createSitelenLayerPluginFromProfiles } from 'sitelen-layer-plugin';
+import { createTokiPonaLocaleProfiles } from 'sitelen-layer-plugin';
+import 'sitelen-layer-plugin/styles.css';
+```
+
+## Deployment Note (CI/Vercel)
+
+- Avoid machine-local dependency paths like `file:/Users/...` or `file:/Downloads/...`.
+- Use one of these installation modes for stable deployments:
+1. Published npm package (recommended for production).
+2. Repo-local vendored `.tgz` file (for controlled pinning).
+3. Git dependency only if your release flow includes built `dist` artifacts.
+
+If bundler resolution fails in CI, first check your dependency source and that `dist/` is available to consumers.
+
+## Key Config (selected)
+
+- `threshold` (default `0.7`)
+- `requireDominantTokiPona` (default `true`)
+- `mutationObserver.enabled` / `mutationObserver.incremental`
+- `spaNavigation.enabled`
+- `sitelenPona.fontFamily`, `sitelenPona.fontCssUrl`, `sitelenPona.className`
+- `onDiagnostics`, `onLayerChange`, `onProfileMatch`
 
 ## Diagnostics
 
-`plugin.getDiagnostics()` returns a stable object including:
+`getDiagnostics()` includes:
 
-- `score`, `threshold`, `eligible`
-- `totalTokens`, `recognizedTokens`
-- `activeLayer`, `modeSource`, `availableLayers`
-- `containerInfo`, `profileId`
-- `lastUpdatedAt`
-- `observerStats`
+- detection: `score`, `threshold`, `eligible`, `totalTokens`, `recognizedTokens`
+- layer state: `activeLayer`, `modeSource`, `availableLayers`
+- profile state: `profileId`, `matchedProfileId`, `matchedProfileReason`
+- observer state: `observerStats`
+- timing: `lastUpdatedAt`
 
-Overlay shows these fields when `debug`, `debugOverlay`, or `diagnosticsOverlay` is enabled.
+## QA And Tests
 
-## QA Fixtures
-
-Fixtures are in `qa/fixtures`.
-
-Run:
-
-```bash
-npm run dev
-```
-
-Open:
-
-- `/qa/index.html`
-
-Includes:
-
-- `tp-dominant.html`
-- `non-tp-dominant.html`
-- `mixed-layout.html`
-- `dynamic-content.html`
-- `profile-routes/tok` and `profile-routes/en`
-
-Checklist: see `qa/README.md`.
-
-## Testing
-
-Run tests:
+- QA fixtures: `/qa/index.html`
+- Manual checklist: `qa/README.md`
+- Run automated tests:
 
 ```bash
 npm run test:run
 ```
 
-Coverage target in current suite:
+## Development
 
-- tokenizer
-- detector
-- emoji transformer
-- sitelen pona helpers
-- profile resolver
-- DOM integration (toggle eligibility, ignore/scope handling, observer behavior)
-
-## Production Notes
-
-- Prefer explicit container scope (`container`, `data-sitelen-layer-scope`) over whole-page processing.
-- Keep `excludeSelectors` tight to avoid unnecessary scanning.
-- For large SPA sections, enable incremental observer mode and moderate `debounceMs`.
-- Load `nasin-sitelen-pu` before init when possible for predictable first paint.
-
-## Limits
-
-- No machine translation
-- No OCR/image text handling
-- No advanced morphological NLP
-- Browser font readiness depends on `document.fonts` support
-
-## Roadmap
-
-- Richer mapping QA and release pin automation
-- More advanced sitelen pona name/cartouche strategies
-- Higher-level SPA adapters (optional wrappers for common frameworks)
+```bash
+npm install
+npm run dev
+npm run build
+```

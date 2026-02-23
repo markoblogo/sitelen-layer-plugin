@@ -172,6 +172,7 @@ interface ResolvedConfig {
   spaNavigation: Required<SpaNavigationConfig>;
   sitelenPona: Required<SitelenPonaConfig>;
   profileId?: string | null;
+  profileMatchReason?: string;
   onProfileMatch?: SitelenLayerPluginConfig['onProfileMatch'];
   onEligibilityChange?: SitelenLayerPluginConfig['onEligibilityChange'];
   onDiagnostics?: SitelenLayerPluginConfig['onDiagnostics'];
@@ -255,6 +256,7 @@ export class SitelenLayerPlugin {
       spaNavigation: defaultSpaNavigationConfig(config),
       sitelenPona,
       profileId: config.profileId,
+      profileMatchReason: config.profileMatchReason,
       onProfileMatch: config.onProfileMatch,
       onEligibilityChange: config.onEligibilityChange,
       onDiagnostics: config.onDiagnostics,
@@ -292,6 +294,15 @@ export class SitelenLayerPlugin {
     }
 
     this.config.onProfileMatch?.(this.config.profileId ?? null);
+    if (this.config.debug) {
+      // eslint-disable-next-line no-console
+      console.info(
+        '[sitelen-layer-plugin] profile match',
+        this.config.profileId
+          ? `${this.config.profileId} (${this.config.profileMatchReason ?? 'matched'})`
+          : this.config.profileMatchReason ?? 'none'
+      );
+    }
 
     this.refresh();
 
@@ -348,6 +359,8 @@ export class SitelenLayerPlugin {
       ignoredCandidates: this.ignoredCandidates,
       sitelenPonaFontReady: this.sitelenPonaFontReady,
       sitelenPonaWarning: this.sitelenPonaWarning,
+      matchedProfileId: this.config.profileId ?? null,
+      matchedProfileReason: this.config.profileMatchReason,
       profileId: this.config.profileId,
       lastUpdatedAt: this.lastUpdatedAt,
       observerStats: { ...this.observerStats }

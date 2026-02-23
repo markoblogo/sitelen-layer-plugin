@@ -55,5 +55,6 @@ describe('profiles', () => {
     expect(resolved?.config.container).toBe('#tok-content');
     expect(resolved?.config.threshold).toBe(0.8);
     expect(resolved?.config.profileId).toBe('tok-locale');
+    expect(resolved?.reason).toContain('pathnamePrefix=/tok/');
   });
 });

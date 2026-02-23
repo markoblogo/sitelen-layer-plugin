@@ -1,7 +1,7 @@
 {
   "name": "sitelen-layer-plugin",
-  "version": "0.3.0",
-  "description": "Display-layer plugin for toki pona pages (latin, sitelen pona, sitelen emoji)",
+  "version": "0.1.0",
+  "description": "Site-owner display-layer plugin for toki pona pages (latin / sitelen-pona / sitelen-emoji)",
   "type": "module",
   "main": "./dist/sitelen-layer-plugin.umd.cjs",
   "module": "./dist/sitelen-layer-plugin.js",
@@ -14,6 +14,9 @@
     },
     "./styles.css": "./dist/sitelen-layer-plugin.css"
   },
+  "sideEffects": [
+    "**/*.css"
+  ],
   "files": [
     "dist",
     "vendor/sitelen-emoji-truth/default-stable.v1.json"
@@ -30,7 +33,7 @@
   "keywords": [
     "toki-pona",
     "sitelen-pona",
-    "emoji",
+    "sitelen-emoji",
     "plugin"
   ],
   "license": "MIT",

@@ -32,6 +32,8 @@ export interface PluginDiagnostics extends Diagnostics {
   ignoredCandidates: number;
   sitelenPonaFontReady: boolean;
   sitelenPonaWarning?: string;
+  matchedProfileId?: string | null;
+  matchedProfileReason?: string;
   profileId?: string | null;
   lastUpdatedAt: string;
   observerStats: ObserverStats;
@@ -89,6 +91,7 @@ export interface SitelenLayerPluginConfig {
   sitelenPona?: SitelenPonaConfig;
 
   profileId?: string | null;
+  profileMatchReason?: string;
   onProfileMatch?: (profileId: string | null) => void;
   onEligibilityChange?: (eligible: boolean, diagnostics: PluginDiagnostics) => void;
   onDiagnostics?: (diagnostics: PluginDiagnostics) => void;
@@ -117,9 +120,21 @@ export interface ProfileResolverOptions {
 
 export interface ResolvedProfile {
   profile: SitelenLayerProfile;
+  reason: string;
   config: SitelenLayerPluginConfig;
 }
 
 export interface CreateFromProfilesOptions extends ProfileResolverOptions {
   baseConfig?: SitelenLayerPluginConfig;
+}
+
+export interface TokiPonaLocalePresetOptions {
+  tpPathPrefix?: string;
+  nonTpPathPrefix?: string;
+  container: string;
+  threshold?: number;
+  debug?: boolean;
+  debugOverlay?: boolean;
+  mutationObserver?: MutationObserverConfig;
+  sitelenPona?: SitelenPonaConfig;
 }
