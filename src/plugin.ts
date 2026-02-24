@@ -25,6 +25,7 @@ import type {
   SitelenLayerPluginConfig,
   SitelenPonaConfig,
   SpaNavigationConfig,
+  TokenFrequency,
   ToggleLabels,
   ToggleMode,
   ToggleSize
@@ -37,6 +38,7 @@ const DEFAULT_MAX_BATCH_NODES = 250;
 const DEFAULT_NAVIGATION_REFRESH_DELAY = 60;
 const DEFAULT_TOGGLE_MODE: ToggleMode = 'auto';
 const DEFAULT_TOGGLE_SIZE: ToggleSize = 'md';
+const TOP_UNMAPPED_LIMIT = 10;
 const PLUGIN_UI_SELECTOR = '[data-sitelen-layer-ui]';
 
 const HISTORY_PATCH_MARKER = '__sitelenLayerPatched__';
@@ -258,10 +260,12 @@ export class SitelenLayerPlugin {
   private sitelenPonaWarning: string | undefined;
   private sitelenPonaReplacementCount = 0;
   private sitelenPonaWordTokenCount = 0;
+  private sitelenPonaTopUnmapped: TokenFrequency[] = [];
   private toggleMountMode: 'floating' | 'inline' = 'floating';
   private toggleMountedIn: string | undefined;
   private emojiReplacementCount = 0;
   private emojiWordTokenCount = 0;
+  private emojiTopUnmapped: TokenFrequency[] = [];
   private containerInfo = 'body';
   private lastUpdatedAt = new Date(0).toISOString();
 
@@ -420,12 +424,14 @@ export class SitelenLayerPlugin {
         this.config.sitelenPona.renderStrategy === 'transform' && this.sitelenPonaWordTokenCount > 0
           ? this.sitelenPonaReplacementCount / this.sitelenPonaWordTokenCount
           : null,
+      sitelenPonaTopUnmapped: this.config.sitelenPona.renderStrategy === 'transform' ? [...this.sitelenPonaTopUnmapped] : [],
       sitelenPonaWarning: this.sitelenPonaWarning,
       toggleMountMode: this.toggleMountMode,
       toggleSize: this.config.toggleSize,
       toggleMountedIn: this.toggleMountedIn,
       emojiReplacementCount: this.emojiReplacementCount,
       emojiCoverageRatio: this.emojiWordTokenCount > 0 ? this.emojiReplacementCount / this.emojiWordTokenCount : 0,
+      emojiTopUnmapped: [...this.emojiTopUnmapped],
       matchedProfileId: this.config.profileId ?? null,
       matchedProfileReason: this.config.profileMatchReason,
       profileId: this.config.profileId,
@@ -471,6 +477,7 @@ export class SitelenLayerPlugin {
     } else {
       this.sitelenPonaReplacementCount = 0;
       this.sitelenPonaWordTokenCount = 0;
+      this.sitelenPonaTopUnmapped = [];
     }
 
     const textForDetection = this.textNodes.map((node) => this.originalTextMap.get(node) ?? '').join(' ');
@@ -654,6 +661,7 @@ export class SitelenLayerPlugin {
   private applyEmojiLayer(nodes: Text[]): void {
     this.emojiReplacementCount = 0;
     this.emojiWordTokenCount = 0;
+    const unmappedCounts: Record<string, number> = {};
 
     nodes.forEach((node) => {
       if (this.isEmojiExcludedNode(node)) {
@@ -665,17 +673,21 @@ export class SitelenLayerPlugin {
         const result = toSitelenEmojiWithStats(source);
         this.emojiReplacementCount += result.replacedTokens;
         this.emojiWordTokenCount += result.wordTokens;
+        this.mergeTokenCounts(unmappedCounts, result.unmappedWordCounts);
         const transformed = result.text;
         if (node.nodeValue !== transformed) {
           this.setTextNodeValue(node, transformed);
         }
       }
     });
+
+    this.emojiTopUnmapped = this.toTopUnmapped(unmappedCounts);
   }
 
   private applySitelenPonaTransformLayer(nodes: Text[]): void {
     this.sitelenPonaReplacementCount = 0;
     this.sitelenPonaWordTokenCount = 0;
+    const unmappedCounts: Record<string, number> = {};
 
     nodes.forEach((node) => {
       const source = this.originalTextMap.get(node);
@@ -683,11 +695,14 @@ export class SitelenLayerPlugin {
         const result = toSitelenPonaWithStats(source);
         this.sitelenPonaReplacementCount += result.replacedTokens;
         this.sitelenPonaWordTokenCount += result.wordTokens;
+        this.mergeTokenCounts(unmappedCounts, result.unmappedWordCounts);
         if (node.nodeValue !== result.text) {
           this.setTextNodeValue(node, result.text);
         }
       }
     });
+
+    this.sitelenPonaTopUnmapped = this.toTopUnmapped(unmappedCounts);
   }
 
   private setTextNodeValue(node: Text, value: string): void {
@@ -782,6 +797,7 @@ export class SitelenLayerPlugin {
   private updateEmojiCoverageStats(nodes: Text[]): void {
     let replacedTokens = 0;
     let wordTokens = 0;
+    const unmappedCounts: Record<string, number> = {};
 
     nodes.forEach((node) => {
       if (this.isEmojiExcludedNode(node)) {
@@ -796,15 +812,18 @@ export class SitelenLayerPlugin {
       const stats = toSitelenEmojiWithStats(source);
       replacedTokens += stats.replacedTokens;
       wordTokens += stats.wordTokens;
+      this.mergeTokenCounts(unmappedCounts, stats.unmappedWordCounts);
     });
 
     this.emojiReplacementCount = replacedTokens;
     this.emojiWordTokenCount = wordTokens;
+    this.emojiTopUnmapped = this.toTopUnmapped(unmappedCounts);
   }
 
   private updateSitelenPonaCoverageStats(nodes: Text[]): void {
     let replacedTokens = 0;
     let wordTokens = 0;
+    const unmappedCounts: Record<string, number> = {};
 
     nodes.forEach((node) => {
       const source = this.originalTextMap.get(node);
@@ -815,10 +834,30 @@ export class SitelenLayerPlugin {
       const stats = toSitelenPonaWithStats(source);
       replacedTokens += stats.replacedTokens;
       wordTokens += stats.wordTokens;
+      this.mergeTokenCounts(unmappedCounts, stats.unmappedWordCounts);
     });
 
     this.sitelenPonaReplacementCount = replacedTokens;
     this.sitelenPonaWordTokenCount = wordTokens;
+    this.sitelenPonaTopUnmapped = this.toTopUnmapped(unmappedCounts);
+  }
+
+  private mergeTokenCounts(target: Record<string, number>, source: Record<string, number>): void {
+    Object.entries(source).forEach(([token, count]) => {
+      if (!token || token.trim().length === 0 || count <= 0) {
+        return;
+      }
+
+      target[token] = (target[token] ?? 0) + count;
+    });
+  }
+
+  private toTopUnmapped(freqMap: Record<string, number>): TokenFrequency[] {
+    return Object.entries(freqMap)
+      .filter(([token, count]) => token.trim().length > 0 && count > 0)
+      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+      .slice(0, TOP_UNMAPPED_LIMIT)
+      .map(([token, count]) => ({ token, count }));
   }
 
   private startObserving(): void {

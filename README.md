@@ -170,6 +170,7 @@ Runtime fingerprints used for verification:
 - toggle labels: `TP / SP / 🙂`
 - inline mount + size class: `slp-toggle--mounted`, `slp-toggle--size-lg`
 - diagnostics overlay fields: `Toggle mode`, `Toggle size`, `Toggle mount`, `Container: main`
+- content-tuned transform coverage can improve iteratively (for the validated `/tp` case, MVP mapping tuning moved SP coverage from about `54%` to `85%`)
 
 Important: `sitelen-layer-plugin` is a **display-layer plugin** for existing toki pona content, not a machine translation system.
 
@@ -216,6 +217,7 @@ createSitelenLayerPlugin({
 ```
 
 `transform` is an MVP token-based conversion path with subset mapping coverage. Unknown tokens stay in latin.
+Coverage is expected to vary by content; tune mapping incrementally for your target locale pages.
 
 ## Toggle Mount And Labels
 
@@ -349,6 +351,7 @@ Integration checklist and Next.js header-mount recipe:
 - sitelen pona state: `sitelenPonaFontReady`, `sitelenPonaRenderMode`, `sitelenPonaWarning`
 - sitelen pona transform state: `sitelenPonaReplacementCount`, `sitelenPonaWordTokenCount`, `sitelenPonaCoverageRatio`
 - emoji state: `emojiReplacementCount`, `emojiCoverageRatio`
+- mapping tuning helpers: `emojiTopUnmapped`, `sitelenPonaTopUnmapped` (top token frequency lists in diagnostics/debug flow)
 - profile state: `profileId`, `matchedProfileId`, `matchedProfileReason`
 - observer state: `observerStats`
 - timing: `lastUpdatedAt`

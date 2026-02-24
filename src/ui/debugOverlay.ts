@@ -71,8 +71,14 @@ export class DebugOverlay {
       `Sitelen pona render: ${diagnostics.sitelenPonaRenderMode}`,
       `Sitelen pona replaced: ${diagnostics.sitelenPonaReplacementCount}`,
       diagnostics.sitelenPonaCoverageRatio === null ? 'Sitelen pona coverage: n/a' : `Sitelen pona coverage: ${sitelenPonaCoveragePercent}%`,
+      diagnostics.sitelenPonaRenderMode === 'transform' && diagnostics.sitelenPonaTopUnmapped.length > 0
+        ? `SP top unmapped: ${formatTopTokens(diagnostics.sitelenPonaTopUnmapped)}`
+        : diagnostics.sitelenPonaRenderMode === 'font-only'
+          ? 'SP top unmapped: n/a (font-only)'
+          : '',
       `Emoji replaced: ${diagnostics.emojiReplacementCount}`,
       `Emoji coverage: ${emojiCoveragePercent}%`,
+      diagnostics.emojiTopUnmapped.length > 0 ? `Emoji top unmapped: ${formatTopTokens(diagnostics.emojiTopUnmapped)}` : '',
       diagnostics.sitelenPonaWarning ? `Warning: ${diagnostics.sitelenPonaWarning}` : ''
     ]
       .filter(Boolean)
@@ -82,4 +88,8 @@ export class DebugOverlay {
   destroy(): void {
     this.root.remove();
   }
+}
+
+function formatTopTokens(items: PluginDiagnostics['emojiTopUnmapped']): string {
+  return items.map((item) => `${item.token}(${item.count})`).join(', ');
 }

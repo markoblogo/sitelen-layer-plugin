@@ -1,10 +1,15 @@
 import { isWordToken, tokenizeForReplacement } from '../tokenizer';
+import type { TokenFrequency } from '../types';
 import { SITELEN_PONA_MVP_MAPPING } from './sitelenPonaMapping';
+
+const TOP_UNMAPPED_LIMIT = 10;
 
 export interface SitelenPonaTransformResult {
   text: string;
   replacedTokens: number;
   wordTokens: number;
+  unmappedWordCounts: Record<string, number>;
+  topUnmapped: TokenFrequency[];
 }
 
 export function toSitelenPona(text: string): string {
@@ -15,6 +20,7 @@ export function toSitelenPonaWithStats(text: string): SitelenPonaTransformResult
   const parts = tokenizeForReplacement(text);
   let replacedTokens = 0;
   let wordTokens = 0;
+  const unmappedWordCounts: Record<string, number> = {};
 
   const transformed = parts
     .map((part) => {
@@ -30,6 +36,8 @@ export function toSitelenPonaWithStats(text: string): SitelenPonaTransformResult
         return replacement;
       }
 
+      unmappedWordCounts[normalized] = (unmappedWordCounts[normalized] ?? 0) + 1;
+
       return part;
     })
     .join('');
@@ -37,7 +45,16 @@ export function toSitelenPonaWithStats(text: string): SitelenPonaTransformResult
   return {
     text: transformed,
     replacedTokens,
-    wordTokens
+    wordTokens,
+    unmappedWordCounts,
+    topUnmapped: toTopTokenList(unmappedWordCounts)
   };
 }
 
+function toTopTokenList(freqMap: Record<string, number>): TokenFrequency[] {
+  return Object.entries(freqMap)
+    .filter(([token, count]) => token.trim().length > 0 && count > 0)
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .slice(0, TOP_UNMAPPED_LIMIT)
+    .map(([token, count]) => ({ token, count }));
+}

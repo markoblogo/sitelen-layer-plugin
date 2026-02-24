@@ -198,7 +198,7 @@ describe('plugin dom integration', () => {
     document.body.innerHTML = `
       <div id="app">
         <header><p id="nav">toki pona li pona</p></header>
-        <main><p id="main">jan pona li toki</p></main>
+        <main><p id="main">jan pona li toki xyz</p></main>
       </div>
     `;
 
@@ -229,6 +229,7 @@ describe('plugin dom integration', () => {
     const diagnostics = plugin.getDiagnostics();
     expect(diagnostics.emojiReplacementCount).toBeGreaterThan(0);
     expect(diagnostics.emojiCoverageRatio).toBeGreaterThan(0);
+    expect(diagnostics.emojiTopUnmapped.length).toBeGreaterThan(0);
 
     plugin.destroy();
   });
@@ -236,7 +237,7 @@ describe('plugin dom integration', () => {
   it('applies sitelen pona transform layer and restores latin', () => {
     document.body.innerHTML = `
       <div id="app">
-        <p>toki pona li pona tawa mi. jan pona li toki pona.</p>
+        <p>toki pona li pona tawa mi. jan pona li toki pona xyz.</p>
       </div>
     `;
 
@@ -256,6 +257,7 @@ describe('plugin dom integration', () => {
     expect(diagnostics.sitelenPonaReplacementCount).toBeGreaterThan(0);
     expect(diagnostics.sitelenPonaWordTokenCount).toBeGreaterThan(0);
     expect(diagnostics.sitelenPonaCoverageRatio).not.toBeNull();
+    expect(diagnostics.sitelenPonaTopUnmapped.length).toBeGreaterThan(0);
 
     const latinButton = document.querySelector('button[data-layer="latin"]') as HTMLButtonElement;
     latinButton.click();
@@ -281,6 +283,7 @@ describe('plugin dom integration', () => {
     expect(diagnostics.sitelenPonaRenderMode).toBe('font-only');
     expect(diagnostics.sitelenPonaCoverageRatio).toBeNull();
     expect(diagnostics.sitelenPonaReplacementCount).toBe(0);
+    expect(diagnostics.sitelenPonaTopUnmapped).toEqual([]);
     plugin.destroy();
   });
 

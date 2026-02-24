@@ -24,6 +24,11 @@ export interface ObserverStats {
   lastMutationAt?: string;
 }
 
+export interface TokenFrequency {
+  token: string;
+  count: number;
+}
+
 export interface PluginDiagnostics extends Diagnostics {
   threshold: number;
   eligible: boolean;
@@ -37,12 +42,14 @@ export interface PluginDiagnostics extends Diagnostics {
   sitelenPonaReplacementCount: number;
   sitelenPonaWordTokenCount: number;
   sitelenPonaCoverageRatio: number | null;
+  sitelenPonaTopUnmapped: TokenFrequency[];
   sitelenPonaWarning?: string;
   toggleMountMode: 'floating' | 'inline';
   toggleSize: ToggleSize;
   toggleMountedIn?: string;
   emojiReplacementCount: number;
   emojiCoverageRatio: number;
+  emojiTopUnmapped: TokenFrequency[];
   matchedProfileId?: string | null;
   matchedProfileReason?: string;
   profileId?: string | null;

@@ -25,4 +25,17 @@ describe('emoji transformer', () => {
     expect(result.replacedTokens).toBeGreaterThan(0);
     expect(result.wordTokens).toBe(3);
   });
+
+  it('reports stable top unmapped tokens without punctuation noise', () => {
+    const result = toSitelenEmojiWithStats('Foo foo, Zzz zzz... Bar! jan');
+    expect(result.unmappedWordCounts.foo).toBe(2);
+    expect(result.unmappedWordCounts.zzz).toBe(2);
+    expect(result.unmappedWordCounts.bar).toBe(1);
+    expect(result.topUnmapped).toEqual([
+      { token: 'foo', count: 2 },
+      { token: 'zzz', count: 2 },
+      { token: 'bar', count: 1 }
+    ]);
+    expect(result.topUnmapped.find((item) => item.token.includes('.'))).toBeUndefined();
+  });
 });
