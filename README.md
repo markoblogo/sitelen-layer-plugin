@@ -2,6 +2,8 @@
 
 A **site-owner plugin** for pages that already contain toki pona content.
 
+Listed on ABVX Lab: https://lab.abvx.xyz/
+
 It adds display layers for the same text:
 
 - `latin`
