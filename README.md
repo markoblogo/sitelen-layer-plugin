@@ -221,6 +221,18 @@ createSitelenLayerPlugin({
 `transform` is an MVP token-based conversion path with subset mapping coverage. Unknown tokens stay in latin.
 Coverage is expected to vary by content; tune mapping incrementally for your target locale pages.
 
+## Sitelen Emoji Mapping Source
+
+The default `sitelen-emoji` mapping is generated from the vendored
+`sitelen-emoji-truth` snapshot at `vendor/sitelen-emoji-truth/default-stable.v1.json`.
+That snapshot is pinned to the `default-stable.v1` protocol profile and should match:
+
+```text
+https://raw.githubusercontent.com/markoblogo/sitelen-emoji-truth/v1.0.0/profiles/default-stable.v1.json
+```
+
+Default runtime behavior follows this protocol snapshot. Project-specific names or site vocabulary should not be silently added to the default mapping; use diagnostics (`emojiTopUnmapped`) to decide whether a token belongs upstream, in a future explicit override layer, or should remain latin fallback.
+
 ## Toggle Mount And Labels
 
 - `toggleMount`: selector or `Element` mount target.
