@@ -156,36 +156,49 @@ plugin.init();
 
 Matching priority: highest `priority` wins among matched profiles.
 
-## Tested Real Integration
+## Tested Real Integrations
 
-Project: **toki-free-kit (ABVX)**
+These projects validate `sitelen-layer-plugin` as a site-owner display layer on existing toki pona locales:
+
+### toki-free-kit
 
 - Live TP locale: <https://toki-free.abvx.xyz/tp>
 - Repo: <https://github.com/markoblogo/toki-free-kit>
 
-Confirmed on live:
+Confirmed:
 
-- site-owner integration on an existing `/tp` toki pona locale
 - header-mounted layer switcher near `EN / TP`
-- all three display modes: Latin toki pona, `sitelen-emoji`, and `sitelen-pona`
+- Latin toki pona, `sitelen-emoji`, and `sitelen-pona` modes
 - emoji layer transforms TP page content, including header/footer where appropriate
 - `sitelen-pona` uses `ligature-font`: latin TP text stays in the DOM and renders as real glyphs through the bundled ligature font
 - locale switcher exclusion (`EN/TP` stays unchanged)
-- `/en` route unaffected (no SP/emoji controls, no transforms)
+- `/en` route unaffected
 - compact badge copy (`mani ala`) stays readable across Latin, emoji, and sitelen pona modes
+
+### dao-toki
+
+- Live TP locale: <https://dao-toki.abvx.xyz/tp>
+- Repo: <https://github.com/markoblogo/dao-toki>
+
+Confirmed:
+
+- site-owner integration on an existing cleaned `/tp` toki pona locale
+- header-mounted layer switcher near `EN / TP`
+- Latin toki pona, `sitelen-emoji`, and `sitelen-pona` modes
+- emoji layer works well on cleaned TP copy
+- `sitelen-pona` renders real glyphs through `ligature-font`
+- locale switcher exclusion (`EN/TP` stays unchanged)
+- `/en` route unaffected
+- production diagnostics overlay disabled
 
 Runtime fingerprints used for verification:
 
 - toggle labels: `TP / SP / 🙂`
 - inline mount + size class: `slp-toggle--mounted`, `slp-toggle--size-lg`
-- diagnostics overlay fields: `Toggle mode`, `Toggle size`, `Toggle mount`, `Container: main`
+- diagnostics overlay fields during development: `Toggle mode`, `Toggle size`, `Toggle mount`, `Container: main`
 - diagnostics verify `sitelenPonaTextRewrite: false` for the recommended SP path
 
-Important: `sitelen-layer-plugin` is a **display-layer plugin** for existing toki pona content, not a machine translation system. Output quality depends on the underlying toki pona copy. For real sitelen pona glyphs, use `ligature-font`; do not rely on arbitrary token-to-symbol replacement.
-
-## Tested Integrations
-
-- [toki-free-kit](https://github.com/markoblogo/toki-free-kit) — `/tp` locale showcase with profile-based activation.
+Important: `sitelen-layer-plugin` is a **display-layer plugin** for existing toki pona content, not a machine translation system. Output quality depends on the underlying toki pona copy. For real sitelen pona glyphs, use `ligature-font`; do not rely on arbitrary token-to-symbol replacement. Emoji rendering follows the plugin mapping/protocol.
 
 ## Bundled Sitelen Pona Font
 

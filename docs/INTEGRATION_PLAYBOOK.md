@@ -150,6 +150,16 @@ createSitelenLayerPlugin({
 
 The plugin bundles `sitelen seli kiwen asuki` under the SIL Open Font License. Only use a custom `fontCssUrl` when the URL is stable, allowed by CSP, and license-safe.
 
+## 8c) Troubleshooting: SP Glyphs Show As Uppercase Latin
+
+If sitelen pona mode shows strings like `MANIALA`, `JANSONAPINASIN`, or `OKAMAJOELIPUILO`, do not add fake mapping entries for those collapsed forms. The usual cause is site CSS applied before the ligature font:
+
+- `text-transform: uppercase`
+- aggressive `letter-spacing`
+- all-caps button, badge, or author-label styles
+
+Fix this in the site integration CSS for the active SP layer. Reset `text-transform`, `letter-spacing`, and caps-related styling on the transformed content area, while keeping plugin UI and the `EN/TP` locale switcher excluded. The underlying text should remain normal lowercase toki pona with spaces, e.g. `mani ala` and `o kama jo e lipu ilo`.
+
 ## 9) Deployment Verification (Runtime Fingerprints)
 
 Use these checks on the real deployed `/tp` page to distinguish stale deployment/cache from integration bugs.
