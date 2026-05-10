@@ -191,6 +191,22 @@ Confirmed:
 - `/en` route unaffected
 - production diagnostics overlay disabled
 
+### stoic-wisdom-series
+
+- Live TP locale: <https://stoic.abvx.xyz/tp>
+- Repo: <https://github.com/markoblogo/stoic-wisdom-series>
+
+Confirmed:
+
+- site-owner integration on an existing cleaned `/tp` toki pona locale
+- header-mounted layer switcher near `EN / TP`
+- `/en` remains normal English with only `EN / TP`
+- `/tp` supports `TP` (Latin toki pona), `SP` (`ligature-font` sitelen pona), and `🙂` (`sitelen-emoji`)
+- emoji layer works on cleaned TP copy
+- `sitelen-pona` renders real glyphs through the bundled ligature-capable font
+- locale switcher exclusion (`EN/TP` stays unchanged)
+- production diagnostics overlay disabled
+
 Runtime fingerprints used for verification:
 
 - toggle labels: `TP / SP / 🙂`
