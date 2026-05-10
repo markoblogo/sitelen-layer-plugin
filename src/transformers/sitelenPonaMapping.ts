@@ -21,6 +21,7 @@ export const SITELEN_PONA_MVP_MAPPING: Record<string, string> = {
   tomo: '⌂',
   moku: '◍',
   mute: '☷',
+  nanpa: '#',
   lili: '▫',
   suli: '◼',
   sin: '✦',
@@ -29,6 +30,7 @@ export const SITELEN_PONA_MVP_MAPPING: Record<string, string> = {
   wile: '⚑',
   ken: '⟡',
   awen: '⟢',
+  kalama: '♪',
   kin: '⁺',
   open: '⟣',
   pini: '⟤',
@@ -52,6 +54,7 @@ export const SITELEN_PONA_MVP_MAPPING: Record<string, string> = {
   ni: '⟱',
   o: '⬖',
   olin: '♡',
+  pilin: '♥',
   pakala: '✴',
   pali: '✊',
   pana: '⇪',
@@ -63,6 +66,7 @@ export const SITELEN_PONA_MVP_MAPPING: Record<string, string> = {
   taso: '∥',
   tenpo: '⏳',
   tu: 'Ⅱ',
+  utala: '⚔',
   wan: 'Ⅰ',
   weka: '⇥'
 };

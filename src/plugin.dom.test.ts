@@ -266,6 +266,47 @@ describe('plugin dom integration', () => {
     plugin.destroy();
   });
 
+  it('keeps sitelen pona transform eligible after observer diagnostics refresh', async () => {
+    vi.spyOn(window, 'requestAnimationFrame').mockImplementation((cb: FrameRequestCallback): number => {
+      cb(0);
+      return 1;
+    });
+
+    document.body.innerHTML = `
+      <div id="app">
+        <p>toki pona li pona tawa mi. jan pona li toki pona. sona pi pilin awen li pona.</p>
+      </div>
+    `;
+
+    const plugin = createSitelenLayerPlugin({
+      container: '#app',
+      defaultLayer: 'sitelen-pona',
+      sitelenPona: { enabled: true, renderStrategy: 'transform' },
+      mutationObserver: {
+        enabled: true,
+        debounceMs: 10,
+        incremental: true
+      }
+    });
+
+    plugin.init();
+
+    await new Promise((resolve) => setTimeout(resolve, 30));
+
+    const paragraph = document.querySelector('#app p') as HTMLParagraphElement;
+    const toggle = document.querySelector('[data-sitelen-layer-ui="toggle"]');
+    const diagnostics = plugin.getDiagnostics();
+
+    expect(toggle).not.toBeNull();
+    expect(paragraph.textContent).toContain('⟐');
+    expect(paragraph.textContent).toContain('♥');
+    expect(diagnostics.eligible).toBe(true);
+    expect(diagnostics.activeLayer).toBe('sitelen-pona');
+    expect(diagnostics.sitelenPonaCoverageRatio).toBe(1);
+
+    plugin.destroy();
+  });
+
   it('keeps font-only path stable and reports no transform coverage', () => {
     document.body.innerHTML = `
       <div id="app">

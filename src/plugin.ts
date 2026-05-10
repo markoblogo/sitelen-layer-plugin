@@ -463,6 +463,17 @@ export class SitelenLayerPlugin {
       return;
     }
 
+    this.withObserverPaused(() => {
+      if (this.textNodes.length > 0) {
+        this.isApplyingLayer = true;
+        try {
+          this.restoreLatinText(this.textNodes);
+        } finally {
+          this.isApplyingLayer = false;
+        }
+      }
+    });
+
     this.containerInfo = describeContainer(this.container, this.config.container);
     const previousEligibility = this.eligible;
 
@@ -611,6 +622,7 @@ export class SitelenLayerPlugin {
     if (!this.container) {
       return 'latin';
     }
+    const container = this.container;
 
     let effectiveLayer = layer;
     if (!this.isLayerEnabled(layer)) {
@@ -618,20 +630,22 @@ export class SitelenLayerPlugin {
       modeSource = layer === 'sitelen-pona' ? 'fallback-font-missing' : modeSource;
     }
 
-    this.isApplyingLayer = true;
-    try {
-      this.restoreLatinText(this.textNodes);
+    this.withObserverPaused(() => {
+      this.isApplyingLayer = true;
+      try {
+        this.restoreLatinText(this.textNodes);
 
-      if (effectiveLayer === 'sitelen-emoji') {
-        this.applyEmojiLayer(this.textNodes);
-      } else if (effectiveLayer === 'sitelen-pona' && this.config.sitelenPona.renderStrategy === 'transform') {
-        this.applySitelenPonaTransformLayer(this.textNodes);
+        if (effectiveLayer === 'sitelen-emoji') {
+          this.applyEmojiLayer(this.textNodes);
+        } else if (effectiveLayer === 'sitelen-pona' && this.config.sitelenPona.renderStrategy === 'transform') {
+          this.applySitelenPonaTransformLayer(this.textNodes);
+        }
+
+        applyContainerLayerClass(container, effectiveLayer, this.sitelenPonaClassName);
+      } finally {
+        this.isApplyingLayer = false;
       }
-
-      applyContainerLayerClass(this.container, effectiveLayer, this.sitelenPonaClassName);
-    } finally {
-      this.isApplyingLayer = false;
-    }
+    });
 
     this.currentLayer = effectiveLayer;
     this.modeSource = modeSource;
@@ -866,6 +880,13 @@ export class SitelenLayerPlugin {
     }
 
     this.observer = new MutationObserver((records) => this.onMutations(records));
+    this.observeCurrentContainer();
+  }
+
+  private observeCurrentContainer(): void {
+    if (!this.container || !this.observer) {
+      return;
+    }
 
     this.observer.observe(this.container, {
       subtree: true,
@@ -874,6 +895,21 @@ export class SitelenLayerPlugin {
       attributes: this.config.mutationObserver.observeAttributes,
       attributeFilter: this.config.mutationObserver.attributeFilter
     });
+  }
+
+  private withObserverPaused<T>(operation: () => T): T {
+    const shouldResume = Boolean(this.observer && this.container);
+    if (shouldResume) {
+      this.observer?.disconnect();
+    }
+
+    try {
+      return operation();
+    } finally {
+      if (shouldResume) {
+        this.observeCurrentContainer();
+      }
+    }
   }
 
   private onMutations(records: MutationRecord[]): void {
