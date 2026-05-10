@@ -165,11 +165,14 @@ Project: **toki-free-kit (ABVX)**
 
 Confirmed on live:
 
-- header-mounted toggle (inline mount near locale switcher)
-- emoji transform on TP content, including header text
+- site-owner integration on an existing `/tp` toki pona locale
+- header-mounted layer switcher near `EN / TP`
+- all three display modes: Latin toki pona, `sitelen-emoji`, and `sitelen-pona`
+- emoji layer transforms TP page content, including header/footer where appropriate
+- `sitelen-pona` uses `ligature-font`: latin TP text stays in the DOM and renders as real glyphs through the bundled ligature font
 - locale switcher exclusion (`EN/TP` stays unchanged)
-- `/en` route unaffected (no toggle, no transforms)
-- `sitelen-pona` uses `ligature-font` path: latin text remains in DOM and the bundled ligature font can render real glyphs
+- `/en` route unaffected (no SP/emoji controls, no transforms)
+- compact badge copy (`mani ala`) stays readable across Latin, emoji, and sitelen pona modes
 
 Runtime fingerprints used for verification:
 
@@ -178,7 +181,7 @@ Runtime fingerprints used for verification:
 - diagnostics overlay fields: `Toggle mode`, `Toggle size`, `Toggle mount`, `Container: main`
 - diagnostics verify `sitelenPonaTextRewrite: false` for the recommended SP path
 
-Important: `sitelen-layer-plugin` is a **display-layer plugin** for existing toki pona content, not a machine translation system.
+Important: `sitelen-layer-plugin` is a **display-layer plugin** for existing toki pona content, not a machine translation system. Output quality depends on the underlying toki pona copy. For real sitelen pona glyphs, use `ligature-font`; do not rely on arbitrary token-to-symbol replacement.
 
 ## Tested Integrations
 
