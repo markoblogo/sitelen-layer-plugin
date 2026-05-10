@@ -38,4 +38,15 @@ describe('emoji transformer', () => {
     ]);
     expect(result.topUnmapped.find((item) => item.token.includes('.'))).toBeUndefined();
   });
+
+  it('applies local overrides for repeated real integration tokens', () => {
+    const result = toSitelenEmojiWithStats('sona Sonko sitelen Lasina sona Seto kin');
+    expect(result.text).toContain('🇨🇳');
+    expect(result.text).toContain('🔤');
+    expect(result.text).toContain('🏛️');
+    expect(result.unmappedWordCounts.sonko).toBeUndefined();
+    expect(result.unmappedWordCounts.lasina).toBeUndefined();
+    expect(result.unmappedWordCounts.seto).toBeUndefined();
+    expect(result.unmappedWordCounts.kin).toBeUndefined();
+  });
 });

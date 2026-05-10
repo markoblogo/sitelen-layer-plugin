@@ -31,4 +31,11 @@ describe('sitelen pona transform (mvp)', () => {
       { token: 'bar', count: 1 }
     ]);
   });
+
+  it('covers additional high-frequency toki-free /tp words', () => {
+    const result = toSitelenPonaWithStats('mani lawa poka olin anu kin');
+    expect(result.replacedTokens).toBe(6);
+    expect(result.wordTokens).toBe(6);
+    expect(result.topUnmapped).toEqual([]);
+  });
 });
