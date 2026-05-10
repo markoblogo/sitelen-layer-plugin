@@ -91,6 +91,7 @@ import {
   createTokiPonaLocaleProfiles
 } from 'sitelen-layer-plugin';
 import 'sitelen-layer-plugin/styles.css';
+import 'sitelen-layer-plugin/sitelen-pona-font.css';
 
 const profiles = createTokiPonaLocaleProfiles({
   container: '#tp-content',
@@ -115,8 +116,8 @@ const profiles = createTokiPonaLocaleProfiles({
   },
   sitelenPona: {
     enabled: true,
-    renderStrategy: 'font-only',
-    fontCssUrl: 'https://cdn.jsdelivr.net/gh/ETBCOR/nasin-sitelen-pu@latest/nasin-sitelen-pu.css'
+    renderStrategy: 'ligature-font',
+    fontFamily: "'sitelen seli kiwen asuki', 'nasin nanpa', sans-serif"
   }
 });
 
@@ -128,7 +129,26 @@ Operational defaults:
 - `toggleMode: 'auto'` keeps inline header mount when available, floating fallback otherwise.
 - `toggleSize: 'lg'` improves readability for header/nav integrations.
 - `emojiExcludeSelectors` protects nav/header/logo from unnecessary replacement noise.
-- `renderStrategy: 'font-only'` is stable MVP styling path; treat `transform` as future conversion path.
+- `renderStrategy: 'ligature-font'` is the recommended path; it keeps latin text in the DOM and uses the bundled ligature font.
+- Use custom fonts only when the site owner has a valid CSS/font path and license. Treat `transform` as experimental text rewriting.
+
+
+## 8b) Sitelen Pona Font
+
+Default recommendation:
+
+```ts
+import 'sitelen-layer-plugin/sitelen-pona-font.css';
+
+createSitelenLayerPlugin({
+  sitelenPona: {
+    renderStrategy: 'ligature-font',
+    fontFamily: "'sitelen seli kiwen asuki', sans-serif"
+  }
+});
+```
+
+The plugin bundles `sitelen seli kiwen asuki` under the SIL Open Font License. Only use a custom `fontCssUrl` when the URL is stable, allowed by CSP, and license-safe.
 
 ## 9) Deployment Verification (Runtime Fingerprints)
 

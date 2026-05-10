@@ -266,6 +266,95 @@ describe('plugin dom integration', () => {
     plugin.destroy();
   });
 
+  it('uses ligature-font strategy without rewriting text nodes', () => {
+    document.body.innerHTML = `
+      <div id="app">
+        <p>toki pona li pona. lipu ni li pona tawa jan ale.</p>
+      </div>
+    `;
+
+    const plugin = createSitelenLayerPlugin({
+      container: '#app',
+      defaultLayer: 'sitelen-pona',
+      sitelenPona: { enabled: true, renderStrategy: 'ligature-font' }
+    });
+
+    plugin.init();
+
+    const app = document.querySelector('#app') as HTMLElement;
+    const paragraph = document.querySelector('#app p') as HTMLParagraphElement;
+    const diagnostics = plugin.getDiagnostics();
+
+    expect(paragraph.textContent).toBe('toki pona li pona. lipu ni li pona tawa jan ale.');
+    expect(app.classList.contains('slp-layer--sitelen-pona')).toBe(true);
+    expect(diagnostics.sitelenPonaRenderMode).toBe('ligature-font');
+    expect(diagnostics.sitelenPonaTextRewrite).toBe(false);
+    expect(diagnostics.sitelenPonaReplacementCount).toBe(0);
+    expect(diagnostics.sitelenPonaCoverageRatio).toBeNull();
+    expect(diagnostics.sitelenPonaTopUnmapped).toEqual([]);
+
+    plugin.destroy();
+  });
+
+  it('restores latin text when switching from emoji to ligature-font sitelen pona', () => {
+    document.body.innerHTML = `
+      <div id="app">
+        <p>toki pona li pona. lipu ni li pona tawa jan ale.</p>
+      </div>
+    `;
+
+    const plugin = createSitelenLayerPlugin({
+      container: '#app',
+      defaultLayer: 'sitelen-emoji',
+      sitelenPona: { enabled: true, renderStrategy: 'ligature-font' }
+    });
+
+    plugin.init();
+
+    const app = document.querySelector('#app') as HTMLElement;
+    const paragraph = document.querySelector('#app p') as HTMLParagraphElement;
+    expect(paragraph.textContent).toContain('🗣️');
+
+    const spButton = document.querySelector('button[data-layer="sitelen-pona"]') as HTMLButtonElement;
+    spButton.click();
+
+    expect(paragraph.textContent).toBe('toki pona li pona. lipu ni li pona tawa jan ale.');
+    expect(app.classList.contains('slp-layer--sitelen-pona')).toBe(true);
+    expect(app.classList.contains('slp-layer--sitelen-emoji')).toBe(false);
+    expect(plugin.getDiagnostics().sitelenPonaTextRewrite).toBe(false);
+
+    plugin.destroy();
+  });
+
+  it('switches from ligature-font sitelen pona to emoji transform', () => {
+    document.body.innerHTML = `
+      <div id="app">
+        <p>toki pona li pona. lipu ni li pona tawa jan ale.</p>
+      </div>
+    `;
+
+    const plugin = createSitelenLayerPlugin({
+      container: '#app',
+      defaultLayer: 'sitelen-pona',
+      sitelenPona: { enabled: true, renderStrategy: 'ligature-font' }
+    });
+
+    plugin.init();
+
+    const app = document.querySelector('#app') as HTMLElement;
+    const paragraph = document.querySelector('#app p') as HTMLParagraphElement;
+    expect(paragraph.textContent).toBe('toki pona li pona. lipu ni li pona tawa jan ale.');
+
+    const emojiButton = document.querySelector('button[data-layer="sitelen-emoji"]') as HTMLButtonElement;
+    emojiButton.click();
+
+    expect(paragraph.textContent).toContain('🗣️');
+    expect(app.classList.contains('slp-layer--sitelen-pona')).toBe(false);
+    expect(app.classList.contains('slp-layer--sitelen-emoji')).toBe(true);
+
+    plugin.destroy();
+  });
+
   it('keeps sitelen pona transform eligible after observer diagnostics refresh', async () => {
     vi.spyOn(window, 'requestAnimationFrame').mockImplementation((cb: FrameRequestCallback): number => {
       cb(0);
@@ -322,6 +411,7 @@ describe('plugin dom integration', () => {
     plugin.init();
     const diagnostics = plugin.getDiagnostics();
     expect(diagnostics.sitelenPonaRenderMode).toBe('font-only');
+    expect(diagnostics.sitelenPonaTextRewrite).toBe(false);
     expect(diagnostics.sitelenPonaCoverageRatio).toBeNull();
     expect(diagnostics.sitelenPonaReplacementCount).toBe(0);
     expect(diagnostics.sitelenPonaTopUnmapped).toEqual([]);

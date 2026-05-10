@@ -68,13 +68,14 @@ export class DebugOverlay {
       `Observer batches: ${diagnostics.observerStats.batchesProcessed}`,
       `Observer mutations: ${diagnostics.observerStats.mutationsObserved}`,
       `Sitelen pona font: ${diagnostics.sitelenPonaFontReady ? 'ready' : 'missing'}`,
-      `Sitelen pona render: ${diagnostics.sitelenPonaRenderMode}`,
+      `Sitelen pona mode: ${diagnostics.sitelenPonaRenderMode}`,
+      `Text rewrite: ${diagnostics.sitelenPonaTextRewrite ? 'yes' : 'no'}`,
       `Sitelen pona replaced: ${diagnostics.sitelenPonaReplacementCount}`,
       diagnostics.sitelenPonaCoverageRatio === null ? 'Sitelen pona coverage: n/a' : `Sitelen pona coverage: ${sitelenPonaCoveragePercent}%`,
       diagnostics.sitelenPonaRenderMode === 'transform' && diagnostics.sitelenPonaTopUnmapped.length > 0
         ? `SP top unmapped: ${formatTopTokens(diagnostics.sitelenPonaTopUnmapped)}`
-        : diagnostics.sitelenPonaRenderMode === 'font-only'
-          ? 'SP top unmapped: n/a (font-only)'
+        : diagnostics.sitelenPonaRenderMode !== 'transform'
+          ? 'SP top unmapped: n/a (ligature font)'
           : '',
       `Emoji replaced: ${diagnostics.emojiReplacementCount}`,
       `Emoji coverage: ${emojiCoveragePercent}%`,

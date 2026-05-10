@@ -38,7 +38,8 @@ export interface PluginDiagnostics extends Diagnostics {
   availableLayers: SitelenLayer[];
   ignoredCandidates: number;
   sitelenPonaFontReady: boolean;
-  sitelenPonaRenderMode: 'font-only' | 'transform';
+  sitelenPonaRenderMode: 'ligature-font' | 'font-only' | 'transform';
+  sitelenPonaTextRewrite: boolean;
   sitelenPonaReplacementCount: number;
   sitelenPonaWordTokenCount: number;
   sitelenPonaCoverageRatio: number | null;
@@ -67,7 +68,7 @@ export interface SitelenPonaConfig {
   fontCssUrl?: string;
   applyToRoot?: boolean;
   className?: string;
-  renderStrategy?: 'font-only' | 'transform';
+  renderStrategy?: 'ligature-font' | 'font-only' | 'transform';
 }
 
 export interface ToggleLabelSpec {

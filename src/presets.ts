@@ -7,8 +7,8 @@ import type {
 
 const DEFAULT_SITELEN_PONA: SitelenPonaConfig = {
   enabled: true,
-  fontFamily: "'nasin-sitelen-pu', 'Noto Sans', sans-serif",
-  renderStrategy: 'font-only'
+  fontFamily: "'sitelen seli kiwen asuki', 'nasin nanpa', sans-serif",
+  renderStrategy: 'ligature-font'
 };
 
 export function createTokiPonaLocaleProfiles(options: TokiPonaLocalePresetOptions): SitelenLayerProfile[] {

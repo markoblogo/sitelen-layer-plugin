@@ -1,3 +1,4 @@
+import '../sitelen-pona-font.css';
 import { createSitelenLayerPlugin, getEmojiMapping } from '../src';
 
 const debugLog = document.querySelector('#debug-log') as HTMLDivElement;
@@ -16,8 +17,8 @@ const plugin = createSitelenLayerPlugin({
   observeMutations: true,
   sitelenPona: {
     enabled: true,
-    fontFamily: "'nasin-sitelen-pu', 'Noto Sans', sans-serif",
-    renderStrategy: 'font-only'
+    fontFamily: "'sitelen seli kiwen asuki', 'nasin nanpa', sans-serif",
+    renderStrategy: 'ligature-font'
   },
   onEligibilityChange: (eligible, diagnostics) => {
     debugLog.textContent = JSON.stringify(

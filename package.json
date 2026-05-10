@@ -12,14 +12,17 @@
       "import": "./dist/sitelen-layer-plugin.js",
       "require": "./dist/sitelen-layer-plugin.umd.cjs"
     },
-    "./styles.css": "./dist/sitelen-layer-plugin.css"
+    "./styles.css": "./dist/sitelen-layer-plugin.css",
+    "./sitelen-pona-font.css": "./sitelen-pona-font.css"
   },
   "sideEffects": [
     "**/*.css"
   ],
   "files": [
     "dist",
-    "vendor/sitelen-emoji-truth/default-stable.v1.json"
+    "vendor/sitelen-emoji-truth/default-stable.v1.json",
+    "sitelen-pona-font.css",
+    "assets/fonts"
   ],
   "scripts": {
     "dev": "vite",

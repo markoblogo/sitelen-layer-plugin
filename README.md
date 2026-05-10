@@ -7,7 +7,7 @@ Listed on ABVX Lab: https://lab.abvx.xyz/
 It adds display layers for the same text:
 
 - `latin`
-- `sitelen-pona` (font-based, recommended `nasin-sitelen-pu`)
+- `sitelen-pona` (recommended bundled-font `ligature-font` path)
 - `sitelen-emoji` (mapping-based)
 
 ## Quick Start
@@ -15,6 +15,7 @@ It adds display layers for the same text:
 ```ts
 import { createSitelenLayerPlugin } from 'sitelen-layer-plugin';
 import 'sitelen-layer-plugin/styles.css';
+import 'sitelen-layer-plugin/sitelen-pona-font.css';
 
 const plugin = createSitelenLayerPlugin({
   container: '#tok-content',
@@ -33,6 +34,7 @@ plugin.init();
 ```ts
 import { createSitelenLayerPlugin } from 'sitelen-layer-plugin';
 import 'sitelen-layer-plugin/styles.css';
+import 'sitelen-layer-plugin/sitelen-pona-font.css';
 
 createSitelenLayerPlugin({
   container: '#landing-toki-pona',
@@ -73,6 +75,7 @@ import {
   createTokiPonaLocaleProfiles
 } from 'sitelen-layer-plugin';
 import 'sitelen-layer-plugin/styles.css';
+import 'sitelen-layer-plugin/sitelen-pona-font.css';
 
 const profiles = createTokiPonaLocaleProfiles({
   container: '#tp-content-scope',
@@ -89,8 +92,9 @@ const profiles = createTokiPonaLocaleProfiles({
     debounceMs: 140
   },
   sitelenPona: {
-    fontCssUrl: 'https://cdn.jsdelivr.net/gh/ETBCOR/nasin-sitelen-pu@latest/nasin-sitelen-pu.css',
-    className: 'my-sitelen-pona-layer'
+    fontFamily: "'sitelen seli kiwen asuki', 'nasin nanpa', sans-serif",
+    className: 'my-sitelen-pona-layer',
+    renderStrategy: 'ligature-font'
   }
 });
 
@@ -165,20 +169,31 @@ Confirmed on live:
 - emoji transform on TP content, including header text
 - locale switcher exclusion (`EN/TP` stays unchanged)
 - `/en` route unaffected (no toggle, no transforms)
-- `sitelen-pona` currently uses `font-only` path (known limitation: no guaranteed full latin->glyph conversion)
+- `sitelen-pona` uses `ligature-font` path: latin text remains in DOM and the bundled ligature font can render real glyphs
 
 Runtime fingerprints used for verification:
 
 - toggle labels: `TP / SP / 🙂`
 - inline mount + size class: `slp-toggle--mounted`, `slp-toggle--size-lg`
 - diagnostics overlay fields: `Toggle mode`, `Toggle size`, `Toggle mount`, `Container: main`
-- content-tuned transform coverage can improve iteratively (for the validated `/tp` case, MVP mapping tuning moved SP coverage from about `54%` to `85%`)
+- diagnostics verify `sitelenPonaTextRewrite: false` for the recommended SP path
 
 Important: `sitelen-layer-plugin` is a **display-layer plugin** for existing toki pona content, not a machine translation system.
 
 ## Tested Integrations
 
 - [toki-free-kit](https://github.com/markoblogo/toki-free-kit) — `/tp` locale showcase with profile-based activation.
+
+## Bundled Sitelen Pona Font
+
+The package includes `sitelen seli kiwen asuki`, a ligature-capable sitelen pona font licensed under the SIL Open Font License 1.1. Import the font CSS next to the plugin styles:
+
+```ts
+import 'sitelen-layer-plugin/styles.css';
+import 'sitelen-layer-plugin/sitelen-pona-font.css';
+```
+
+The CSS entry defines `@font-face` for `sitelen seli kiwen asuki` and points to the bundled font asset. Attribution and license notes live in `assets/fonts/README.md` and `assets/fonts/OFL-sitelen-seli-kiwen.txt` in the npm package.
 
 ## Sitelen Pona Font Config Example
 
@@ -197,13 +212,14 @@ createSitelenLayerPlugin({
   emojiExcludeSelectors: ['header', '.site-logo'],
   sitelenPona: {
     enabled: true,
-    fontFamily: "'nasin-sitelen-pu', 'Noto Sans', sans-serif",
-    fontCssUrl: 'https://example.com/fonts/nasin-sitelen-pu.css',
+    fontFamily: "'sitelen seli kiwen asuki', 'nasin nanpa', sans-serif",
     className: 'my-sitelen-pona-layer',
-    renderStrategy: 'font-only'
+    renderStrategy: 'ligature-font'
   }
 }).init();
 ```
+
+`ligature-font` is the recommended sitelen pona path. It keeps latin toki pona text in the DOM and relies on OpenType ligatures. The package bundles `sitelen seli kiwen asuki` (SIL Open Font License 1.1); import `sitelen-layer-plugin/sitelen-pona-font.css` to use it out of the box. Site owners can still provide another ligature-capable font with `fontFamily`/`fontCssUrl`; `nasin-sitelen-pu` is supported only when the site owner provides a working CSS/font path.
 
 ## Sitelen Pona Transform MVP Example
 
@@ -218,8 +234,7 @@ createSitelenLayerPlugin({
 }).init();
 ```
 
-`transform` is an MVP token-based conversion path with subset mapping coverage. Unknown tokens stay in latin.
-Coverage is expected to vary by content; tune mapping incrementally for your target locale pages.
+`transform` is an experimental token-based conversion path with subset mapping coverage. It rewrites text nodes and is not the recommended way to get real sitelen pona glyphs. Unknown tokens stay in latin. Coverage is expected to vary by content; tune mapping incrementally only for experimental use cases.
 
 ## Sitelen Emoji Mapping Source
 
@@ -274,7 +289,8 @@ createSitelenLayerPlugin({
 
 Common issues:
 
-- `fontCssUrl` blocked by CSP.
+- `sitelen-layer-plugin/sitelen-pona-font.css` was not imported.
+- Custom `fontCssUrl` blocked by CSP.
 - Font file loads but CSS specificity prevents application.
 - Font loaded, but custom site CSS overrides plugin class.
 - Font readiness is false in diagnostics/overlay.
@@ -293,14 +309,15 @@ Example with stronger specificity:
 /* plugin config: sitelenPona.className = "my-sitelen-pona-layer" */
 #tok-content.my-sitelen-pona-layer,
 #tok-content.my-sitelen-pona-layer * {
-  font-family: 'nasin-sitelen-pu', 'Noto Sans', sans-serif !important;
+  font-family: 'sitelen seli kiwen asuki', 'nasin nanpa', sans-serif !important;
   font-variant-ligatures: common-ligatures discretionary-ligatures;
+  font-feature-settings: "liga" 1, "dlig" 1, "calt" 1;
 }
 ```
 
-`font-only` note: this path is a styling/ligature pipeline. It does not guarantee full latin-to-glyph conversion on every site.
+`ligature-font` note: this path applies styling and OpenType ligatures and does not rewrite text. `font-only` remains as a backward-compatible alias/legacy spelling.
 
-`transform` note: this path performs token replacement with an MVP subset mapping. It is intentionally partial and not a complete sitelen pona grammar/typesetting engine.
+`transform` note: this path performs token replacement with an MVP subset mapping. It is experimental and not a complete sitelen pona grammar/typesetting engine.
 
 ## SPA / Observer Recommendations
 
@@ -326,6 +343,7 @@ import { createSitelenLayerPlugin } from 'sitelen-layer-plugin';
 import { createSitelenLayerPluginFromProfiles } from 'sitelen-layer-plugin';
 import { createTokiPonaLocaleProfiles } from 'sitelen-layer-plugin';
 import 'sitelen-layer-plugin/styles.css';
+import 'sitelen-layer-plugin/sitelen-pona-font.css';
 ```
 
 ## Deployment Note (CI/Vercel)
@@ -351,8 +369,8 @@ Integration checklist and Next.js header-mount recipe:
 - `mutationObserver.enabled` / `mutationObserver.incremental`
 - `spaNavigation.enabled`
 - `emojiExcludeSelectors` (keep nav/header/logo untouched in emoji mode)
-- `sitelenPona.fontFamily`, `sitelenPona.fontCssUrl`, `sitelenPona.className`
-- `sitelenPona.renderStrategy` (`font-only` or `transform` hook)
+- `sitelenPona.fontFamily`, optional `sitelenPona.fontCssUrl`, `sitelenPona.className`
+- `sitelenPona.renderStrategy` (`ligature-font`, legacy `font-only`, or experimental `transform` hook)
 - `onDiagnostics`, `onLayerChange`, `onProfileMatch`
 
 ## Diagnostics
@@ -363,7 +381,7 @@ Integration checklist and Next.js header-mount recipe:
 - layer state: `activeLayer`, `modeSource`, `availableLayers`
 - toggle state: `toggleMountMode`, `toggleMountedIn`
 - sitelen pona state: `sitelenPonaFontReady`, `sitelenPonaRenderMode`, `sitelenPonaWarning`
-- sitelen pona transform state: `sitelenPonaReplacementCount`, `sitelenPonaWordTokenCount`, `sitelenPonaCoverageRatio`
+- sitelen pona state: `sitelenPonaTextRewrite`, `sitelenPonaReplacementCount`, `sitelenPonaWordTokenCount`, `sitelenPonaCoverageRatio`
 - emoji state: `emojiReplacementCount`, `emojiCoverageRatio`
 - mapping tuning helpers: `emojiTopUnmapped`, `sitelenPonaTopUnmapped` (top token frequency lists in diagnostics/debug flow)
 - profile state: `profileId`, `matchedProfileId`, `matchedProfileReason`

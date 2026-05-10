@@ -1,6 +1,6 @@
 import type { SitelenLayer, SitelenPonaConfig } from '../types';
 
-export const DEFAULT_SITELEN_PONA_FONT = "'nasin-sitelen-pu', 'Noto Sans', sans-serif";
+export const DEFAULT_SITELEN_PONA_FONT = "'sitelen seli kiwen asuki', 'nasin nanpa', sans-serif";
 export const DEFAULT_SITELEN_PONA_CLASS = 'slp-layer--sitelen-pona';
 export const LATIN_CLASS = 'slp-layer--latin';
 export const EMOJI_CLASS = 'slp-layer--sitelen-emoji';
@@ -67,7 +67,7 @@ export function getSitelenPonaClassName(configClassName?: string): string {
 }
 
 export function applyContainerLayerClass(container: Element, layer: SitelenLayer, sitelenPonaClassName: string): void {
-  container.classList.remove(LATIN_CLASS, EMOJI_CLASS, sitelenPonaClassName);
+  container.classList.remove(LATIN_CLASS, EMOJI_CLASS, DEFAULT_SITELEN_PONA_CLASS, sitelenPonaClassName);
 
   if (layer === 'latin') {
     container.classList.add(LATIN_CLASS);
@@ -80,6 +80,9 @@ export function applyContainerLayerClass(container: Element, layer: SitelenLayer
   }
 
   if (layer === 'sitelen-pona') {
-    container.classList.add(sitelenPonaClassName);
+    container.classList.add(DEFAULT_SITELEN_PONA_CLASS);
+    if (sitelenPonaClassName !== DEFAULT_SITELEN_PONA_CLASS) {
+      container.classList.add(sitelenPonaClassName);
+    }
   }
 }

@@ -4,7 +4,7 @@
   --slp-toggle-fg: #ffffff;
   --slp-toggle-active-bg: #ffffff;
   --slp-toggle-active-fg: #111111;
-  --slp-font-sitelen-pona: 'nasin-sitelen-pu', 'Noto Sans', sans-serif;
+  --slp-font-sitelen-pona: 'sitelen seli kiwen asuki', 'nasin nanpa', sans-serif;
   --slp-debug-bg: rgba(18, 20, 24, 0.92);
   --slp-debug-fg: #f1f5fb;
 }
@@ -102,16 +102,28 @@
   cursor: not-allowed;
 }
 
-.slp-layer--sitelen-pona {
+.slp-layer--sitelen-pona,
+.slp-layer--sitelen-pona * {
   font-family: var(--slp-font-sitelen-pona);
   line-height: 1.35;
   text-rendering: optimizeLegibility;
   font-variant-ligatures: common-ligatures discretionary-ligatures;
+  font-feature-settings: "liga" 1, "dlig" 1, "calt" 1;
 }
 
-.slp-layer--sitelen-pona :is(code, pre, textarea, input, select, option) {
+.slp-layer--sitelen-pona :is(code, pre, textarea, input, select, option),
+.slp-layer--sitelen-pona [data-sitelen-layer-ignore],
+.slp-layer--sitelen-pona [data-sitelen-layer-ignore] * {
   font-family: inherit;
   font-variant-ligatures: normal;
+  font-feature-settings: normal;
+}
+
+[data-sitelen-layer-ui],
+[data-sitelen-layer-ui] * {
+  font-family: system-ui, sans-serif;
+  font-variant-ligatures: normal;
+  font-feature-settings: normal;
 }
 
 .slp-debug-overlay {

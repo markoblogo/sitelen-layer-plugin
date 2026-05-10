@@ -30,4 +30,17 @@ describe('sitelen pona transformer helpers', () => {
     expect(getSitelenPonaClassName('custom-layer')).toBe('custom-layer');
     expect(getSitelenPonaClassName()).toBe(DEFAULT_SITELEN_PONA_CLASS);
   });
+
+  it('keeps the standard styling class when a custom class is configured', () => {
+    const el = document.createElement('div');
+    applyContainerLayerClass(el, 'sitelen-pona', 'custom-layer');
+
+    expect(el.classList.contains(DEFAULT_SITELEN_PONA_CLASS)).toBe(true);
+    expect(el.classList.contains('custom-layer')).toBe(true);
+
+    applyContainerLayerClass(el, 'latin', 'custom-layer');
+    expect(el.classList.contains(DEFAULT_SITELEN_PONA_CLASS)).toBe(false);
+    expect(el.classList.contains('custom-layer')).toBe(false);
+    expect(el.classList.contains('slp-layer--latin')).toBe(true);
+  });
 });

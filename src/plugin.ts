@@ -159,7 +159,7 @@ function defaultSitelenPonaConfig(config?: SitelenPonaConfig): Required<SitelenP
     fontCssUrl: config?.fontCssUrl ?? '',
     applyToRoot: config?.applyToRoot ?? false,
     className: config?.className ?? '',
-    renderStrategy: config?.renderStrategy ?? 'font-only'
+    renderStrategy: config?.renderStrategy ?? 'ligature-font'
   };
 }
 
@@ -418,6 +418,7 @@ export class SitelenLayerPlugin {
       ignoredCandidates: this.ignoredCandidates,
       sitelenPonaFontReady: this.sitelenPonaFontReady,
       sitelenPonaRenderMode: this.config.sitelenPona.renderStrategy,
+      sitelenPonaTextRewrite: this.config.sitelenPona.renderStrategy === 'transform',
       sitelenPonaReplacementCount: this.config.sitelenPona.renderStrategy === 'transform' ? this.sitelenPonaReplacementCount : 0,
       sitelenPonaWordTokenCount: this.config.sitelenPona.renderStrategy === 'transform' ? this.sitelenPonaWordTokenCount : 0,
       sitelenPonaCoverageRatio:
@@ -656,6 +657,8 @@ export class SitelenLayerPlugin {
     this.config.onDiagnostics?.(diagnostics);
     this.debugOverlay?.update(diagnostics);
 
+    this.scheduleSitelenPonaFontDiagnostics(effectiveLayer);
+
     if (emitLayerChange) {
       this.config.onLayerChange?.(effectiveLayer, diagnostics);
     }
@@ -745,18 +748,19 @@ export class SitelenLayerPlugin {
     if (this.config.sitelenPona.enabled) {
       this.sitelenPonaFontReady = isSitelenPonaFontReady(this.config.sitelenPona.fontFamily);
 
-      if (!this.sitelenPonaFontReady && this.config.sitelenPona.renderStrategy === 'font-only') {
-        this.disabledLayers.add('sitelen-pona');
-        this.sitelenPonaWarning =
-          'sitelen-pona disabled: nasin-sitelen-pu font is not detected. Configure sitelenPona.fontCssUrl or load font manually.';
+      if (this.config.sitelenPona.renderStrategy === 'ligature-font') {
+        this.sitelenPonaWarning = this.sitelenPonaFontReady
+          ? 'sitelen-pona ligature-font mode keeps latin text and relies on a ligature-capable sitelen pona font.'
+          : 'sitelen-pona ligature-font mode is active, but the configured font is not detected yet. Load a ligature-capable sitelen pona font.';
         this.warnDebug(this.sitelenPonaWarning);
       } else if (this.config.sitelenPona.renderStrategy === 'font-only') {
-        this.sitelenPonaWarning =
-          'sitelen-pona font-only mode applies styling and ligatures, but may not fully convert latin text into sitelen pona glyphs.';
+        this.sitelenPonaWarning = this.sitelenPonaFontReady
+          ? 'sitelen-pona font-only mode is a legacy alias for ligature-font mode and does not rewrite text.'
+          : 'sitelen-pona font-only mode is active, but the configured font is not detected yet. Load a ligature-capable sitelen pona font.';
         this.warnDebug(this.sitelenPonaWarning);
       } else if (this.config.sitelenPona.renderStrategy === 'transform') {
         this.sitelenPonaWarning =
-          'sitelen-pona transform mode is active with MVP subset coverage. Unmapped tokens stay in latin.';
+          'sitelen-pona transform mode is experimental and rewrites text with an MVP subset. Prefer ligature-font for real glyph rendering.';
         this.warnDebug(this.sitelenPonaWarning);
       }
     }
@@ -770,6 +774,34 @@ export class SitelenLayerPlugin {
     if (this.toggle) {
       this.toggle.setDisabledLayers(Array.from(this.disabledLayers));
     }
+  }
+
+  private scheduleSitelenPonaFontDiagnostics(layer: SitelenLayer): void {
+    if (
+      layer !== 'sitelen-pona' ||
+      !this.config.sitelenPona.enabled ||
+      this.config.sitelenPona.renderStrategy === 'transform' ||
+      !('fonts' in document) ||
+      !document.fonts
+    ) {
+      return;
+    }
+
+    void document.fonts.ready.then(() => {
+      if (this.currentLayer !== 'sitelen-pona') {
+        return;
+      }
+
+      this.sitelenPonaFontReady = isSitelenPonaFontReady(this.config.sitelenPona.fontFamily);
+      this.sitelenPonaWarning = this.sitelenPonaFontReady
+        ? `sitelen-pona ${this.config.sitelenPona.renderStrategy} mode keeps latin text and relies on a ligature-capable sitelen pona font.`
+        : `sitelen-pona ${this.config.sitelenPona.renderStrategy} mode is active, but the configured font is not detected yet. Load a ligature-capable sitelen pona font.`;
+      this.lastUpdatedAt = new Date().toISOString();
+
+      const diagnostics = this.getDiagnostics();
+      this.config.onDiagnostics?.(diagnostics);
+      this.debugOverlay?.update(diagnostics);
+    });
   }
 
   private isLayerEnabled(layer: SitelenLayer): boolean {
