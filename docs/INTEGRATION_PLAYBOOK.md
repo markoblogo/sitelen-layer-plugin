@@ -150,15 +150,41 @@ createSitelenLayerPlugin({
 
 The plugin bundles `sitelen seli kiwen asuki` under the SIL Open Font License. Only use a custom `fontCssUrl` when the URL is stable, allowed by CSP, and license-safe.
 
-## 8c) Troubleshooting: SP Glyphs Show As Uppercase Latin
+## 8c) Troubleshooting: SP Glyphs Appear As Uppercase Latin Text
 
-If sitelen pona mode shows strings like `MANIALA`, `JANSONAPINASIN`, or `OKAMAJOELIPUILO`, do not add fake mapping entries for those collapsed forms. The usual cause is site CSS applied before the ligature font:
+Symptom: `ligature-font` sitelen pona mode shows uppercase or collapsed Latin-looking strings instead of glyphs, for example `MANIALA`, `JANSONAPINASIN`, `JANPIOLINALE`, `OKAMAJOELIPUILO`, or `LIPUILO`.
+
+This is usually not a missing mapping problem. The common causes are site CSS or source labels that interfere with the ligature font:
 
 - `text-transform: uppercase`
 - aggressive `letter-spacing`
 - all-caps button, badge, or author-label styles
+- source copy without normal toki pona word spacing
 
-Fix this in the site integration CSS for the active SP layer. Reset `text-transform`, `letter-spacing`, and caps-related styling on the transformed content area, while keeping plugin UI and the `EN/TP` locale switcher excluded. The underlying text should remain normal lowercase toki pona with spaces, e.g. `mani ala` and `o kama jo e lipu ilo`.
+Do not add artificial mapping entries for collapsed forms like `MANIALA` or `OKAMAJOELIPUILO`. Fix the source or CSS so the underlying text remains normal lowercase toki pona with spaces, for example `mani ala`, `jan sona pi nasin`, `jan pi olin ale`, and `o kama jo e lipu ilo`.
+
+Site-specific CSS fix:
+
+```css
+/* Site-specific fix for ligature-font sitelen pona mode */
+.slp-layer--sitelen-pona [data-sitelen-layer-scope],
+.slp-layer--sitelen-pona [data-sitelen-layer-scope] * {
+  text-transform: none !important;
+  letter-spacing: normal !important;
+  font-variant-caps: normal !important;
+}
+
+/* Keep plugin UI readable */
+[data-sitelen-layer-ui],
+[data-sitelen-layer-ui] * {
+  font-family: system-ui, sans-serif;
+  font-feature-settings: normal;
+  text-transform: none;
+  letter-spacing: normal;
+}
+```
+
+Also exclude locale/layer controls, e.g. `[data-locale-switcher]` and `#sitelen-layer-toggle-mount`, so `EN / TP / SP / 🙂` stays readable.
 
 ## 9) Deployment Verification (Runtime Fingerprints)
 

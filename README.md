@@ -310,6 +310,7 @@ Common issues:
 - Font file loads but CSS specificity prevents application.
 - Font loaded, but custom site CSS overrides plugin class.
 - Font readiness is false in diagnostics/overlay.
+- SP glyphs appear as uppercase/collapsed Latin strings such as `MANIALA` because site CSS applies all-caps styling.
 
 Checklist:
 
@@ -334,6 +335,8 @@ Example with stronger specificity:
 `ligature-font` note: this path applies styling and OpenType ligatures and does not rewrite text. `font-only` remains as a backward-compatible alias/legacy spelling.
 
 `transform` note: this path performs token replacement with an MVP subset mapping. It is experimental and not a complete sitelen pona grammar/typesetting engine.
+
+If `ligature-font` mode shows collapsed uppercase strings such as `MANIALA` or `OKAMAJOELIPUILO`, fix source spacing/CSS (`text-transform`, `letter-spacing`, caps styles) instead of adding fake mappings. See [`docs/INTEGRATION_PLAYBOOK.md`](./docs/INTEGRATION_PLAYBOOK.md).
 
 ## SPA / Observer Recommendations
 
