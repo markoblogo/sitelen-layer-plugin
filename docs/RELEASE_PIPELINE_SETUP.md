@@ -13,7 +13,8 @@ This project now has two release workflows:
    - owner: GitHub org/user that owns the repo,
    - repository: `markoblogo/sitelen-layer-plugin`,
    - workflow file: `release-publish.yml`.
-3. If the package does not exist yet, do one local `npm publish` with OTP to create it first.
+3. Set package metadata `repository.url` to `https://github.com/markoblogo/sitelen-layer-plugin` so npm provenance verification can match this repo.
+4. If the package does not exist yet, do one local `npm publish` with OTP to create it first.
 
 > For trusted publishing to work reliably in this pipeline, the workflow uses Node.js 24
 > (npm CLI 11.5.1+) because older npm versions in CI can still require legacy auth.
