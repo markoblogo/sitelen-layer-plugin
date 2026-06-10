@@ -134,7 +134,9 @@ describe('integration smoke: browser-extension PoC content contract', () => {
     expect(content).toContain('chrome.runtime.sendMessage({ type: \'GET_ENABLED\' }');
     expect(content).toContain('chrome.runtime.getURL(\'sitelen-layer-plugin.bundle.js\')');
     expect(content).toContain('GLOBAL_PLUGIN_KEY = \'__sitelenLayerPlugin__\'');
+    expect(content).toContain('window.location.pathname + window.location.search + window.location.hash');
     expect(content).not.toContain('document.createElement(\'script\')');
     expect(content).toContain('__sitelenLayerPlugin__');
+    expect(content).toContain('chrome.runtime.lastError');
   });
 });

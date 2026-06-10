@@ -1,5 +1,26 @@
 # Changelog
 
+## v0.3.8
+
+### Added/Improved
+
+- Browser-extension PoC hardening:
+  - route-aware bootstrap now evaluates full route (`pathname + search + hash`), not only path;
+  - guarded `chrome.runtime.sendMessage` callback with `chrome.runtime.lastError` handling;
+  - robust plugin lifecycle state guard to avoid duplicate init races across repeated content-script injections;
+  - clearer status surface for disabled/bootstrapping/failure states.
+- UI polish in floating toggle:
+  - refined expansion micro-interactions and hover feedback;
+  - improved focus and reduced-motion friendly transitions.
+- Release prep updates:
+  - added `RELEASE_NOTES_v0.3.8.md` and updated changelog entry for the v0.3.0-track closure.
+
+### Validation
+
+- `npm run build`
+- `npm run ci:release`
+- workflow dispatch `release-publish.yml` dry run + production checks for fresh tag.
+
 ## v0.3.7 (release prep)
 
 ### Planned

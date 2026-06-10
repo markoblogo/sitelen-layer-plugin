@@ -60,6 +60,7 @@
   font-size: var(--slp-toggle-preview-size);
   color: var(--slp-toggle-fg);
   font-weight: var(--slp-toggle-preview-font-weight);
+  transition: transform var(--slp-toggle-transition), color var(--slp-toggle-transition), opacity var(--slp-toggle-transition);
 }
 
 .slp-toggle--floating .slp-toggle__preview {
@@ -89,11 +90,17 @@
   width: auto;
   padding-inline: 6px;
   gap: var(--slp-toggle-gap);
+  transform: translateY(-1px);
 }
 
 .slp-toggle--floating.slp-toggle--collapsed .slp-toggle__btn {
   opacity: 0;
   pointer-events: none;
+}
+
+.slp-toggle--floating.slp-toggle--expanded .slp-toggle__preview {
+  opacity: 0.9;
+  transform: scale(0.86);
 }
 
 .slp-toggle--floating.slp-toggle--expanded .slp-toggle__btn {
@@ -186,6 +193,12 @@
   font-size: 18px;
   line-height: 1;
   padding: 0;
+  transition: transform var(--slp-toggle-transition), box-shadow var(--slp-toggle-transition), border-color var(--slp-toggle-transition), background-color var(--slp-toggle-transition);
+}
+
+.slp-toggle__btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px rgb(255 255 255 / 22%);
 }
 
 .slp-toggle--size-sm .slp-toggle__btn {
@@ -247,6 +260,7 @@
 
 .slp-toggle__btn:hover {
   border-color: var(--slp-toggle-border);
+  transform: translateY(-1px);
 }
 
 .slp-toggle__btn.is-active {
