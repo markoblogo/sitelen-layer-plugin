@@ -11,7 +11,7 @@
   "module": "./dist/sitelen-layer-plugin.js",
   "types": "./dist/index.d.ts",
   "bin": {
-    "sitelen-layer-cli": "./bin/sitelen-layer-cli.mjs"
+    "sitelen-layer-cli": "bin/sitelen-layer-cli.mjs"
   },
   "exports": {
     ".": {

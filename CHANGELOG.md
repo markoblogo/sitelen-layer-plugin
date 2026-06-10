@@ -1,5 +1,24 @@
 # Changelog
 
+## v0.3.5
+
+### Added
+
+- Integration PoC artifacts are now included in release distribution (`adapters/*`, `demo/integration/*`).
+- Release pipeline documentation and workflow hardening for v0.3.0-track (staging mode and manual inputs).
+- Release notes for the v0.3.x integration state (`RELEASE_NOTES_v0.3.5.md`).
+
+### Improved
+
+- Trusted publishing workflow reliability improvements: Node.js 24 runtime in CI and repository provenance metadata (`repository.url`) for npm OIDC verification.
+- CLI packaging metadata cleanup to prevent npm bin auto-correction warnings.
+- Stronger release checks: adapter zip smoke and tarball publication smoke in CI release path.
+
+### Docs
+
+- Updated migration and integration docs for route-guarded adapter lifecycle and distribution packaging in this track.
+
+
 ## v0.3.0
 
 ### Added
