@@ -29,7 +29,7 @@ describe('integration smoke: route guards', () => {
     expect(script?.children).toContain('__slpShouldRun');
     expect(script?.children).toContain('/tp');
     expect(script?.children).toContain('/admin');
-    expect(script?.children).toContain('routeMatchMode');
+    expect(script?.children).toContain('contains');
   });
 
   it('does not add route guard when include/exclude are not set', () => {
