@@ -11,6 +11,10 @@ export interface SitelenLayerWebpackPluginOptions {
   routeMatchMode?: RouteMatchMode;
 }
 
+type SitelenLayerWebpackPluginNormalizedOptions = Omit<SitelenLayerWebpackPluginOptions, 'styleHref'> & {
+  styleHref: string;
+};
+
 const STYLE_ENTRY = 'sitelen-layer-plugin/styles.css';
 const DEFAULT_ROUTE_MATCH_MODE: RouteMatchMode = 'contains';
 
@@ -91,7 +95,7 @@ function createInlineInitScript(options: SitelenLayerWebpackPluginOptions): stri
 }
 
 export class SitelenLayerWebpackPlugin {
-  private readonly options: SitelenLayerWebpackPluginOptions;
+  private readonly options: SitelenLayerWebpackPluginNormalizedOptions;
 
   constructor(options: SitelenLayerWebpackPluginOptions = {}) {
     this.options = {
