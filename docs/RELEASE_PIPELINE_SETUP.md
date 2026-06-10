@@ -20,7 +20,14 @@ This project now has two release workflows:
 2. Add secret:
    - `NPM_TOKEN` with an npm automation token scoped for publish.
 
-This workflow will use `NPM_TOKEN` if present; otherwise it uses Trusted Publishing.
+This workflow selects publish mode with:
+
+- `workflow_dispatch` input `publishMode`:
+  - `auto` — try `NPM_TOKEN` if present, otherwise Trusted Publishing.
+  - `token` — force classic token auth (`NPM_TOKEN`).
+  - `trusted` — force npm Trusted Publishing via OIDC.
+
+For push-based releases, the workflow still uses the same `auto` fallback.
 
 ## 2) `GITHUB_TOKEN` permissions
 - The workflow requires:
@@ -49,6 +56,13 @@ gh workflow run release-publish.yml \
   --repo markoblogo/sitelen-layer-plugin \
   --field tag="v0.3.0" \
   --field dryRun=true
+
+# Force trusted mode (for environments where a legacy token is present but fails):
+gh workflow run release-publish.yml \
+  --repo markoblogo/sitelen-layer-plugin \
+  --field tag="v0.3.5" \
+  --field publishMode=trusted \
+  --field dryRun=false
 ```
 
 Notes:

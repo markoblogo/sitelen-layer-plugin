@@ -10,6 +10,15 @@ on:
         description: 'Release tag (required for manual dispatch). Example: v0.3.0'
         required: true
         type: string
+      publishMode:
+        description: 'Auth mode for npm publish: auto (default), token, trusted'
+        required: false
+        default: auto
+        type: choice
+        options:
+          - auto
+          - token
+          - trusted
       dryRun:
         description: 'Staging run: skip npm publish, still create/update GitHub release with artifacts'
         required: false
@@ -114,7 +123,25 @@ jobs:
         if: steps.publish_mode.outputs.run_publish == 'true'
         id: npm_publish_mode
         run: |
-          if [[ -n "${{ secrets.NPM_TOKEN }}" ]]; then
+          requested_mode="${{ github.event.inputs.publishMode }}"
+
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            if [[ "$requested_mode" == "token" ]]; then
+              echo "mode=token" >> "$GITHUB_OUTPUT"
+              echo "Using classic auth via NPM_TOKEN by explicit request."
+            elif [[ "$requested_mode" == "trusted" ]]; then
+              echo "mode=trusted" >> "$GITHUB_OUTPUT"
+              echo "Using npm Trusted Publishing by explicit request."
+            else
+              if [[ -n "${{ secrets.NPM_TOKEN }}" ]]; then
+                echo "mode=token" >> "$GITHUB_OUTPUT"
+                echo "Using classic auth via NPM_TOKEN (auto mode)."
+              else
+                echo "mode=trusted" >> "$GITHUB_OUTPUT"
+                echo "Using npm Trusted Publishing via GitHub OIDC (auto mode)."
+              fi
+            fi
+          elif [[ -n "${{ secrets.NPM_TOKEN }}" ]]; then
             echo "mode=token" >> "$GITHUB_OUTPUT"
             echo "Using classic auth via NPM_TOKEN."
           else
