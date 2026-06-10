@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.3.9
+
+### Added/Improved
+
+- Browser-extension PoC hardening finalization (`route-aware` bootstrap, duplicate-safe guards).
+- Floating toggle polish final pass (hover/focus micro-interactions, preview transition refinements).
+
+### Validation
+
+- `workflow_dispatch` staging + production run for `release-publish.yml` on `v0.3.9`.
+
+
 ## v0.3.8
 
 ### Added/Improved
