@@ -1,6 +1,8 @@
-# Ghost integration PoC
+# Ghost Theme PoC (Theme snippet)
 
-Theme snippet for Ghost (inline bootstrap):
-- include CSS from CDN
-- include IIFE build
-- route allowlist handled in runtime bootstrap logic
+Inject CDN assets from a Ghost theme partial and gate init by route allow/deny logic.
+
+## Files
+- `manifest.json`
+- `template.hbs`
+- `entry.json`

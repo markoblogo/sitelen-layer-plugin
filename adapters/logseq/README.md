@@ -1,7 +1,8 @@
-# Logseq Plugin PoC
+# Logseq Plugin PoC (Lifecycle-safe + route refresh)
 
-Minimal route-based integration for Logseq desktop/web plugin.
+Route-aware integration with re-init on each route change.
 
-- re-init plugin on route changes
-- target markdown preview root
-- expose toggle via plugin command
+## Files
+- `logseq-plugin.json`
+- `main.ts`
+- `entry.json`

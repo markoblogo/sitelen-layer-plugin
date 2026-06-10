@@ -1,9 +1,8 @@
-# Obsidian Plugin PoC
+# Obsidian Plugin PoC (Lifecycle-safe)
 
-Minimal plugin wiring:
-- create plugin instance in `onload()`
-- call `init()` during load and `destroy()` on unload
+Simple plugin skeleton with `init()` on `onload()` and `destroy()` on `onunload()`.
 
-Files:
-- `main.ts`
+## Files
 - `manifest.json`
+- `main.ts`
+- `entry.json`

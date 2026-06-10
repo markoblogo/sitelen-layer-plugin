@@ -68,6 +68,10 @@ describe('package exports', () => {
       })
     );
     expect(packageJson.files).toContain('sitelen-pona-font.css');
+    expect(packageJson.files).toContain('adapters');
+    expect(packageJson.files).toContain('demo/integration');
+    expect(packageJson.files).toContain('docs/MIGRATION_v0.3.0.md');
+    expect(packageJson.files).toContain('docs/V0.3_INTEGRATION_TRACK.md');
     expect(packageJson.files).toContain('assets/fonts');
     expect(packageJson.files).toContain('bin/sitelen-layer-cli.mjs');
 

@@ -130,6 +130,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 ### v0.3.0 integration track (PoC docs)
 
 See [docs/V0.3_INTEGRATION_TRACK.md](docs/V0.3_INTEGRATION_TRACK.md) for browser extension and CMS adapter starter patterns (Obsidian / Logseq / WordPress / Ghost).
+Migration notes: [docs/MIGRATION_v0.3.0.md](docs/MIGRATION_v0.3.0.md).
+
+Release candidate demo pages:
+
+- `demo/integration/vite-webpack-route-guard.html`
+- `demo/integration/extension-csp-flow.html`
 
 ## Copy-Paste Integrations
 

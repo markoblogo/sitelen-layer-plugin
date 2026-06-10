@@ -87,7 +87,11 @@
     "bin/sitelen-layer-cli.mjs",
     "vendor/sitelen-emoji-truth/default-stable.v1.json",
     "sitelen-pona-font.css",
-    "assets/fonts"
+    "assets/fonts",
+    "adapters",
+    "demo/integration",
+    "docs/MIGRATION_v0.3.0.md",
+    "docs/V0.3_INTEGRATION_TRACK.md"
   ],
   "scripts": {
     "dev": "vite",

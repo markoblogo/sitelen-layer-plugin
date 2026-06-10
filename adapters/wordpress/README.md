@@ -1,3 +1,8 @@
-# WordPress integration PoC
+# WordPress PoC (CDN bootstrap + route filters)
 
-Small plugin snippet to bootstrap sitelen layer safely from theme or plugin code.
+Minimal PoC for WP plugin bootstrap using CDN and safe runtime config.
+
+## Files
+- `manifest.json`
+- `plugin.php`
+- `entry.json`

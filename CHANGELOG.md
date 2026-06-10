@@ -1,5 +1,23 @@
 # Changelog
 
+## v0.3.0
+
+### Added
+
+- v0.3 integration pack: browser-extension, obsidian, logseq, wordpress, ghost PoC artifacts under `adapters/*`.
+- `entry.json` manifests for adapter distribution metadata and release workflow.
+- `demo/integration/*` pages for smoke/manual testing of route guard and extension flow.
+
+### Improved
+
+- `routeInclude` / `routeExclude` support in `vite-plugin` and `webpack-plugin` for allowlist/denylist initialization control.
+- CSP-safe integration safeguards in browser-extension PoC: route-guarded bootstrap and idempotent plugin instance guard.
+- Packaging updates in `package.json` to include adapter and demo artifacts in distributed `files` list.
+
+### Docs
+
+- Updated v0.3 integration track and migration note for route-guard and CMS adapter lifecycle behavior.
+
 ## v0.1.1
 
 ### Added
