@@ -8,6 +8,7 @@
 - `entry.json` manifests for adapter distribution metadata and release workflow.
 - `demo/integration/*` pages for smoke/manual testing of route guard and extension flow.
 - `npm run pack:adapters`, `npm run smoke:adapters`, `npm run smoke:publication`, and GitHub workflow `.github/workflows/release-preflight.yml` for v0.3.0 preflight packaging validation.
+- Added release pipeline (`.github/workflows/release-publish.yml`) for tag/manual releases: build, test, adapter packaging/smoke, `npm publish`, and GitHub release asset upload (adapter zip + npm tarball).
 
 ### Improved
 

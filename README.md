@@ -144,6 +144,11 @@ Release preflight:
 - `npm run smoke:publication`
 - `npm run ci:release`
 
+Release publication:
+
+- Tag push `v*` triggers `.github/workflows/release-publish.yml`.
+- Workflow builds, tests, creates adapter zip packages, publishes to npm, and creates a GitHub Release with zip artifacts + npm tarball.
+
 ## Copy-Paste Integrations
 
 ### 1) Static landing page
