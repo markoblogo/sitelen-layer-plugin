@@ -15,6 +15,9 @@ This project now has two release workflows:
    - workflow file: `release-publish.yml`.
 3. If the package does not exist yet, do one local `npm publish` with OTP to create it first.
 
+> For trusted publishing to work reliably in this pipeline, the workflow uses Node.js 24
+> (npm CLI 11.5.1+) because older npm versions in CI can still require legacy auth.
+
 ### Legacy fallback (optional): `NPM_TOKEN`
 1. Open repository settings: `Settings > Secrets and variables > Actions`.
 2. Add secret:
