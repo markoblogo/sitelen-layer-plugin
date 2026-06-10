@@ -5,25 +5,34 @@ This project now has two release workflows:
 - `.github/workflows/release-preflight.yml` — PR/push sanity preflight
 - `.github/workflows/release-publish.yml` — release pipeline with publish + release assets
 
-## 1) Configure required CI secrets
+## 1) Configure release authentication
 
-### `NPM_TOKEN`
+### Preferred: Trusted Publishing (OIDC)
+1. In npm, open this package and go to **Settings → Access → Trusted publishing**.
+2. Add GitHub Actions as trusted publisher:
+   - owner: GitHub org/user that owns the repo,
+   - repository: `markoblogo/sitelen-layer-plugin`,
+   - workflow file: `release-publish.yml`.
+3. If the package does not exist yet, do one local `npm publish` with OTP to create it first.
+
+### Legacy fallback (optional): `NPM_TOKEN`
 1. Open repository settings: `Settings > Secrets and variables > Actions`.
 2. Add secret:
    - `NPM_TOKEN` with an npm automation token scoped for publish.
 
-> If this secret is missing, the release workflow fails explicitly before `npm publish`.
+This workflow will use `NPM_TOKEN` if present; otherwise it uses Trusted Publishing.
 
 ## 2) `GITHUB_TOKEN` permissions
-- Repository setting already expects token with `contents: write`.
+- The workflow requires:
+  - `contents: write` for release creation/update.
+  - `id-token: write` for Trusted Publishing.
 - The workflow declares:
 
 ```yaml
 permissions:
   contents: write
+  id-token: write
 ```
-
-which is sufficient for creating/updating GitHub Releases in this repo.
 
 ## 3) Staging/manual release run (no npm publish)
 
@@ -48,7 +57,7 @@ Notes:
 
 ## 4) Production release from tag
 
-After validating staging run and setting `NPM_TOKEN`, create a real release by:
+After validating staging run, create a real release by:
 
 ```bash
 git tag v0.3.0
