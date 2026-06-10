@@ -31,6 +31,18 @@ export default defineConfig({
       }
     },
     rollupOptions: {
+      onwarn(warning, warn) {
+        if (
+          typeof warning === 'object' &&
+          warning.message.includes('src/next.ts') &&
+          (warning.message.includes('Module level directives cause errors when bundled, "use client"') ||
+            warning.message.includes('Can\'t resolve original location of error'))
+        ) {
+          return;
+        }
+
+        warn(warning);
+      },
       output: {
         exports: 'named'
       }

@@ -27,6 +27,50 @@ const plugin = createSitelenLayerPlugin({
 plugin.init();
 ```
 
+## Framework wrappers
+
+### React
+
+```tsx
+'use client';
+
+import { SitelenLayerProvider } from 'sitelen-layer-plugin/react';
+
+export default function Layout({ children }: { children: React.ReactNode }) {
+  return <SitelenLayerProvider config={{ container: '#app', defaultLayer: 'sitelen-emoji' }}>{children}</SitelenLayerProvider>;
+}
+```
+
+### Vue 3
+
+```ts
+import { vSitelenLayer } from 'sitelen-layer-plugin/vue';
+
+app.directive('sitelen-layer', vSitelenLayer);
+
+// <div v-sitelen-layer="{ container: '#app' }">...</div>
+```
+
+### Svelte
+
+```svelte
+import { sitelenLayerAction } from 'sitelen-layer-plugin/svelte';
+
+<section use:sitelenLayerAction={{ container: '#app', defaultLayer: 'sitelen-emoji' }}>
+```
+
+### Next.js
+
+```tsx
+'use client';
+
+import { SitelenLayerNextProvider } from 'sitelen-layer-plugin/next';
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return <SitelenLayerNextProvider config={{ container: '#app' }}>{children}</SitelenLayerNextProvider>;
+}
+```
+
 ## Copy-Paste Integrations
 
 ### 1) Static landing page
@@ -240,21 +284,24 @@ const top = topUnmappedEmojiFromText('...some latin text...', 12);
 
 ## CLI (v0.2.x)
 
+The `sitelen-layer-cli` binary is published via package `bin`:
+
 ```bash
 npx sitelen-layer-cli scan ./public/index.html
 npx sitelen-layer-cli emoji-candidates ./public/index.html --limit 20 --json
 ```
 
-## CDN / IIFE usage (experimental)
+## CDN / Module usage (experimental)
 
-Built artifacts include `es`, `umd`, and `iife` formats.
+Built artifacts include `es` and `cjs` formats.
 
 ```html
-<script src="https://cdn.jsdelivr.net/npm/sitelen-layer-plugin@0.1.1/dist/sitelen-layer-plugin.iife.js"></script>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sitelen-layer-plugin@0.1.1/dist/sitelen-layer-plugin.css">
 
-<script>
-  const plugin = window.SitelenLayerPlugin.createSitelenLayerPlugin({
+<script type="module">
+  import { createSitelenLayerPlugin } from 'https://cdn.jsdelivr.net/npm/sitelen-layer-plugin@0.1.1/dist/sitelen-layer-plugin.js';
+
+  const plugin = createSitelenLayerPlugin({
     container: '#app'
   });
   plugin.init();
