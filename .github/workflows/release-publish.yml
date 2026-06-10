@@ -163,6 +163,8 @@ jobs:
           steps.publish_mode.outputs.run_publish == 'true' &&
           steps.npm_publish_mode.outputs.mode == 'trusted'
         run: |
+          unset NODE_AUTH_TOKEN
+          npm config delete //registry.npmjs.org/:_authToken || true
           npm publish --access public --provenance
 
       - name: Find npm tarball
