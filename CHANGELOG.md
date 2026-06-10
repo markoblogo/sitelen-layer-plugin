@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.3.6 (in progress)
+
+### Planned
+
+- Finalize v0.3.0-track polish and UX/integration hardening before final production publish.
+- Run staged release validation (`publishMode=trusted`, `dryRun=true`) and then production (`dryRun=false`) from `release-publish.yml`.
+
 ## v0.3.5
 
 ### Added
