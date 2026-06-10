@@ -21,6 +21,13 @@ export interface LayerUsageSnapshot {
   totalSwitches: number;
   activeLayer: SitelenLayer;
   collectedAt: string;
+  windowSeconds?: number;
+}
+
+export interface LayerUsageSnapshotOptions {
+  since?: string;
+  timeWindowMs?: number;
+  maxEntries?: number;
 }
 
 export interface UnmappedSnapshot {
@@ -47,6 +54,7 @@ export interface TelemetryEvent {
   version: number;
   fingerprint: string;
   event: string;
+  id: string;
   timestamp: string;
   payload: Record<string, unknown>;
 }
@@ -57,6 +65,11 @@ export interface TelemetryConfig {
   sampleRate?: number;
   includeLayerUsage?: boolean;
   hashSalt?: string;
+  batchSize?: number;
+  flushIntervalMs?: number;
+  maxQueueSize?: number;
+  maxRetries?: number;
+  retryBackoffMs?: number;
 }
 
 export interface ThemeConfig {

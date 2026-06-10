@@ -28,10 +28,33 @@ const LABELS: Record<SitelenLayer, string> = {
 export class LayerToggle {
   private root: HTMLDivElement;
   private buttons = new Map<SitelenLayer, HTMLButtonElement>();
+  private preview: HTMLSpanElement;
   private mountedMode: 'floating' | 'inline' = 'floating';
+
+  private readonly handlePointerEnter = (): void => {
+    this.setFloatingExpanded(true);
+  };
+
+  private readonly handlePointerLeave = (): void => {
+    this.setFloatingExpanded(false);
+  };
+
+  private readonly handleFocusIn = (): void => {
+    this.setFloatingExpanded(true);
+  };
+
+  private readonly handleFocusOut = (event: FocusEvent): void => {
+    const relatedTarget = event.relatedTarget as Node | null;
+    if (!this.root.contains(relatedTarget)) {
+      this.setFloatingExpanded(false);
+    }
+  };
+
+  private readonly getLayerSymbol = (layer: SitelenLayer): string => SYMBOLS[layer];
 
   constructor(private readonly options: ToggleOptions) {
     this.root = document.createElement('div');
+    this.preview = document.createElement('span');
     this.root.className = 'slp-toggle';
     this.root.classList.add(`slp-toggle--size-${this.options.size}`);
     if (this.options.transition && this.options.transition !== 'none') {
@@ -40,6 +63,9 @@ export class LayerToggle {
     this.root.setAttribute('data-sitelen-layer-ui', 'toggle');
     this.root.setAttribute('role', 'group');
     this.root.setAttribute('aria-label', 'Sitelen layer switcher');
+
+    this.preview.className = 'slp-toggle__preview';
+    this.root.appendChild(this.preview);
 
     this.options.layers.forEach((layer) => {
       const button = document.createElement('button');
@@ -78,20 +104,34 @@ export class LayerToggle {
     if (mountPoint) {
       mountPoint.appendChild(this.root);
       this.root.classList.add('slp-toggle--mounted');
-      this.root.classList.remove('slp-toggle--floating');
+      this.root.classList.remove('slp-toggle--floating', 'slp-toggle--collapsed');
+      this.root.removeEventListener('pointerenter', this.handlePointerEnter);
+      this.root.removeEventListener('pointerleave', this.handlePointerLeave);
+      this.root.removeEventListener('focusin', this.handleFocusIn);
+      this.root.removeEventListener('focusout', this.handleFocusOut);
+      this.root.removeAttribute('data-slp-toggle-expanded');
+      this.root.removeAttribute('data-slp-toggle-collapsed');
+
       this.root.setAttribute('data-slp-toggle-mode', 'inline');
       if (this.options.mountedIn) {
         this.root.setAttribute('data-slp-toggle-mounted-in', this.options.mountedIn);
       }
+
       this.mountedMode = 'inline';
       return;
     }
 
     document.body.appendChild(this.root);
-    this.root.classList.add('slp-toggle--floating');
+    this.root.classList.add('slp-toggle--floating', 'slp-toggle--collapsed');
     this.root.classList.remove('slp-toggle--mounted');
     this.root.setAttribute('data-slp-toggle-mode', 'floating');
     this.root.removeAttribute('data-slp-toggle-mounted-in');
+    this.root.addEventListener('pointerenter', this.handlePointerEnter);
+    this.root.addEventListener('pointerleave', this.handlePointerLeave);
+    this.root.addEventListener('focusin', this.handleFocusIn);
+    this.root.addEventListener('focusout', this.handleFocusOut);
+    this.setFloatingExpanded(false);
+
     this.mountedMode = 'floating';
   }
 
@@ -100,6 +140,7 @@ export class LayerToggle {
   }
 
   setActiveLayer(layer: SitelenLayer): void {
+    this.preview.textContent = this.getLayerSymbol(layer);
     this.buttons.forEach((button, key) => {
       const active = key === layer;
       button.classList.toggle('is-active', active);
@@ -118,8 +159,35 @@ export class LayerToggle {
   }
 
   destroy(): void {
+    this.root.removeEventListener('pointerenter', this.handlePointerEnter);
+    this.root.removeEventListener('pointerleave', this.handlePointerLeave);
+    this.root.removeEventListener('focusin', this.handleFocusIn);
+    this.root.removeEventListener('focusout', this.handleFocusOut);
     this.root.remove();
     this.buttons.clear();
+  }
+
+  private setFloatingExpanded(isExpanded: boolean): void {
+    if (this.options.mode === 'inline') {
+      return;
+    }
+
+    if (!this.root.classList.contains('slp-toggle--floating')) {
+      return;
+    }
+
+    if (isExpanded) {
+      this.root.classList.add('slp-toggle--expanded');
+      this.root.classList.remove('slp-toggle--collapsed');
+      this.root.setAttribute('data-slp-toggle-expanded', 'true');
+      this.root.removeAttribute('data-slp-toggle-collapsed');
+      return;
+    }
+
+    this.root.classList.add('slp-toggle--collapsed');
+    this.root.classList.remove('slp-toggle--expanded');
+    this.root.setAttribute('data-slp-toggle-collapsed', 'true');
+    this.root.removeAttribute('data-slp-toggle-expanded');
   }
 
   private resolveLabel(layer: SitelenLayer): ToggleLabelSpec {

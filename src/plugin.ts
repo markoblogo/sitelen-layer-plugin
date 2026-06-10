@@ -20,6 +20,7 @@ import type {
   LayerModeSource,
   MutationObserverConfig,
   LayerUsageSnapshot,
+  LayerUsageSnapshotOptions,
   TelemetryConfig,
   ObserverStats,
   PluginDiagnostics,
@@ -49,9 +50,13 @@ const TOP_UNMAPPED_LIMIT = 10;
 const PLUGIN_UI_SELECTOR = '[data-sitelen-layer-ui]';
 const DEFAULT_TELEMETRY_SAMPLE_RATE = 1;
 const DEFAULT_TELEMETRY_BEACON = '/sitelen-layer/telemetry';
+const DEFAULT_TELEMETRY_FLUSH_MS = 2500;
+const DEFAULT_TELEMETRY_BATCH_SIZE = 20;
+const DEFAULT_TELEMETRY_MAX_QUEUE = 240;
+const DEFAULT_TELEMETRY_MAX_RETRIES = 2;
+const DEFAULT_TELEMETRY_RETRY_BACKOFF_MS = 1000;
 const TELEMETRY_QUEUE_KEY = 'sitelen-layer-plugin:telemetry-queue';
-const TELEMETRY_FLUSH_MS = 2500;
-const TELEMETRY_BATCH_LIMIT = 20;
+const LAYER_USAGE_HISTORY_LIMIT = 1200;
 
 const HISTORY_PATCH_MARKER = '__sitelenLayerPatched__';
 const historyListeners = new Set<() => void>();
@@ -223,7 +228,12 @@ function defaultTelemetryConfig(config: SitelenLayerPluginConfig): TelemetryConf
     beaconUrl: config.telemetry.beaconUrl ?? DEFAULT_TELEMETRY_BEACON,
     sampleRate: config.telemetry.sampleRate ?? DEFAULT_TELEMETRY_SAMPLE_RATE,
     includeLayerUsage: config.telemetry.includeLayerUsage ?? false,
-    hashSalt: config.telemetry.hashSalt
+    hashSalt: config.telemetry.hashSalt,
+    batchSize: config.telemetry.batchSize ?? DEFAULT_TELEMETRY_BATCH_SIZE,
+    flushIntervalMs: config.telemetry.flushIntervalMs ?? DEFAULT_TELEMETRY_FLUSH_MS,
+    maxQueueSize: config.telemetry.maxQueueSize ?? DEFAULT_TELEMETRY_MAX_QUEUE,
+    maxRetries: config.telemetry.maxRetries ?? DEFAULT_TELEMETRY_MAX_RETRIES,
+    retryBackoffMs: config.telemetry.retryBackoffMs ?? DEFAULT_TELEMETRY_RETRY_BACKOFF_MS
   };
 }
 
@@ -266,6 +276,10 @@ interface ResolvedConfig {
   onEligibilityChange?: SitelenLayerPluginConfig['onEligibilityChange'];
   onDiagnostics?: SitelenLayerPluginConfig['onDiagnostics'];
   onLayerChange?: SitelenLayerPluginConfig['onLayerChange'];
+}
+
+interface TelemetryRecord extends TelemetryEvent {
+  retryCount: number;
 }
 
 export class SitelenLayerPlugin {
@@ -334,6 +348,7 @@ export class SitelenLayerPlugin {
     'sitelen-pona': 0,
     'sitelen-emoji': 0
   };
+  private layerUsageHistory: Array<{ layer: SitelenLayer; timestamp: string }> = [];
   private totalLayerChanges = 0;
   private unmappedHistory: Record<SitelenLayer, Array<{ token: string; count: number; layer: SitelenLayer; timestamp: string }>> = {
     latin: [],
@@ -341,8 +356,12 @@ export class SitelenLayerPlugin {
     'sitelen-emoji': []
   };
   private telemetryFlushTimer: number | null = null;
-  private telemetryBuffer: TelemetryEvent[] = [];
+  private telemetryRetryTimer: number | null = null;
+  private telemetryFlushInProgress = false;
+  private telemetryBuffer: TelemetryRecord[] = [];
+  private telemetryOnlineListener: (() => void) | null = null;
   private lastTelemetryDispatch = 0;
+  private lastTelemetryIdSuffix = 0;
 
   private initialLayerResolved = false;
   private observerStats: ObserverStats = {
@@ -437,6 +456,7 @@ export class SitelenLayerPlugin {
 
     this.applyThemeVars();
     this.flushTelemetryQueue();
+    this.installTelemetryOnlineObserver();
 
     if (this.config.sitelenPona.enabled) {
       ensureFontCssLink(this.config.sitelenPona.fontCssUrl || undefined);
@@ -506,7 +526,18 @@ export class SitelenLayerPlugin {
       clearSitelenPonaVariables(this.container, this.config.sitelenPona.applyToRoot);
     }
 
+    if (this.telemetryFlushTimer !== null) {
+      window.clearTimeout(this.telemetryFlushTimer);
+      this.telemetryFlushTimer = null;
+    }
+
+    if (this.telemetryRetryTimer !== null) {
+      window.clearTimeout(this.telemetryRetryTimer);
+      this.telemetryRetryTimer = null;
+    }
+
     this.hideDiagnosticsOverlay();
+    this.uninstallTelemetryOnlineObserver();
     this.flushTelemetryNow();
     this.initialized = false;
   }
@@ -558,12 +589,22 @@ export class SitelenLayerPlugin {
     return this.config;
   }
 
-  getLayerUsageSnapshot(): LayerUsageSnapshot {
+  getLayerUsageSnapshot(options?: LayerUsageSnapshotOptions): LayerUsageSnapshot {
+    const since = options?.since;
+    const timeWindowMs = options?.timeWindowMs;
+    const maxEntries = options?.maxEntries;
+    const totalSwitches = options ? this.getFilteredLayerUsageEntries({ since, timeWindowMs, maxEntries }).length : this.totalLayerChanges;
+    const countsByLayer =
+      options?.since || options?.timeWindowMs || options?.maxEntries != null
+        ? this.getLayerUsageFromEntries(this.getFilteredLayerUsageEntries({ since, timeWindowMs, maxEntries }))
+        : { ...this.layerUsage };
+
     return {
-      countsByLayer: { ...this.layerUsage },
-      totalSwitches: this.totalLayerChanges,
+      countsByLayer,
+      totalSwitches,
       activeLayer: this.currentLayer,
-      collectedAt: new Date().toISOString()
+      collectedAt: new Date().toISOString(),
+      windowSeconds: typeof timeWindowMs === 'number' ? Math.round(timeWindowMs / 1000) : undefined
     };
   }
 
@@ -586,14 +627,14 @@ export class SitelenLayerPlugin {
     };
   }
 
-  renderUsageDashboard(container: Element | string): void {
+  renderUsageDashboard(container: Element | string, options?: LayerUsageSnapshotOptions): void {
     const containerElement = resolveElement(container) ?? null;
     if (!containerElement) {
       this.warnDebug('renderUsageDashboard container not found');
       return;
     }
 
-    const snapshot = this.getLayerUsageSnapshot();
+    const snapshot = this.getLayerUsageSnapshot(options);
     const root = document.createElement('div');
     root.className = 'slp-layer-usage-dashboard';
     const total = Math.max(1, snapshot.totalSwitches);
@@ -607,6 +648,49 @@ export class SitelenLayerPlugin {
     root.style.cssText =
       'position: fixed; right: 16px; top: 16px; z-index: 2147483600; padding: 8px; background: rgba(12,12,12,0.88); color: #f4f6ff; border-radius: 10px; font-size: 11px; white-space: pre-wrap; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;';
     containerElement.appendChild(root);
+  }
+
+  private getFilteredLayerUsageEntries(options: {
+    since?: string;
+    timeWindowMs?: number;
+    maxEntries?: number;
+  }): Array<{ layer: SitelenLayer; timestamp: string }> {
+    const timeWindowMs = options.timeWindowMs;
+    const sinceTs = options.since ? Date.parse(options.since) : null;
+    if (sinceTs != null && Number.isNaN(sinceTs)) {
+      return [];
+    }
+
+    let records = [...this.layerUsageHistory];
+
+    if (sinceTs != null) {
+      records = records.filter((entry) => Date.parse(entry.timestamp) >= sinceTs);
+    }
+
+    if (timeWindowMs != null && timeWindowMs > 0) {
+      const cutoff = Date.now() - timeWindowMs;
+      records = records.filter((entry) => Date.parse(entry.timestamp) >= cutoff);
+    }
+
+    if (options.maxEntries != null) {
+      records = records.slice(-Math.max(1, options.maxEntries));
+    }
+
+    return records;
+  }
+
+  private getLayerUsageFromEntries(records: Array<{ layer: SitelenLayer }>): Record<SitelenLayer, number> {
+    const countsByLayer: Record<SitelenLayer, number> = {
+      latin: 0,
+      'sitelen-pona': 0,
+      'sitelen-emoji': 0
+    };
+
+    records.forEach((record) => {
+      countsByLayer[record.layer] = (countsByLayer[record.layer] ?? 0) + 1;
+    });
+
+    return countsByLayer;
   }
 
   showDiagnosticsOverlay(): void {
@@ -726,6 +810,14 @@ export class SitelenLayerPlugin {
   private recordLayerUsage(layer: SitelenLayer): void {
     this.ensureLayerUsage(layer);
     this.totalLayerChanges += 1;
+    this.layerUsageHistory.push({
+      layer,
+      timestamp: new Date().toISOString()
+    });
+
+    if (this.layerUsageHistory.length > LAYER_USAGE_HISTORY_LIMIT) {
+      this.layerUsageHistory = this.layerUsageHistory.slice(-LAYER_USAGE_HISTORY_LIMIT);
+    }
   }
 
   private resolveNextLayer(): { layer: SitelenLayer; source: LayerModeSource } {
@@ -1555,12 +1647,30 @@ export class SitelenLayerPlugin {
     this.unmappedHistory[layer] = history.slice(-200);
   }
 
-  private recordTelemetryEvent(event: string, payload: Record<string, unknown>): void {
-    if (this.config.telemetry === false) {
+  private installTelemetryOnlineObserver(): void {
+    if (this.config.telemetry === false || this.telemetryOnlineListener != null) {
       return;
     }
 
-    if (!window.fetch) {
+    const handleOnline = (): void => {
+      this.scheduleTelemetryFlush();
+    };
+
+    this.telemetryOnlineListener = handleOnline;
+    window.addEventListener('online', handleOnline);
+  }
+
+  private uninstallTelemetryOnlineObserver(): void {
+    if (!this.telemetryOnlineListener) {
+      return;
+    }
+
+    window.removeEventListener('online', this.telemetryOnlineListener);
+    this.telemetryOnlineListener = null;
+  }
+
+  private recordTelemetryEvent(event: string, payload: Record<string, unknown>): void {
+    if (this.config.telemetry === false) {
       return;
     }
 
@@ -1568,17 +1678,24 @@ export class SitelenLayerPlugin {
       return;
     }
 
-    this.telemetryBuffer.push(this.createTelemetryEvent(event, payload));
+    const record = this.createTelemetryEvent(event, payload);
+    this.telemetryBuffer.push(record);
+    this.telemetryBuffer = this.enforceTelemetryQueueLimit(uniqueTelemetry(this.telemetryBuffer));
     this.scheduleTelemetryFlush();
   }
 
-  private createTelemetryEvent(event: string, payload: Record<string, unknown>): TelemetryEvent {
+  private createTelemetryEvent(event: string, payload: Record<string, unknown>): TelemetryRecord {
+    const timestamp = new Date().toISOString();
     const fingerprint = this.createTelemetryFingerprint();
+    const id = this.createTelemetryId(timestamp);
+
     return {
       version: 1,
+      id,
       fingerprint,
       event,
-      timestamp: new Date().toISOString(),
+      timestamp,
+      retryCount: 0,
       payload: {
         ...payload,
         ...(this.config.telemetry && this.config.telemetry.includeLayerUsage
@@ -1594,63 +1711,121 @@ export class SitelenLayerPlugin {
     return simpleHash(base);
   }
 
+  private createTelemetryId(timestamp: string): string {
+    const salt = this.config.telemetry && this.config.telemetry.hashSalt ? this.config.telemetry.hashSalt : 'sitelen-layer-plugin';
+    return `${timestamp}:${++this.lastTelemetryIdSuffix}:${simpleHash(`${salt}|${timestamp}`)}`;
+  }
+
   private scheduleTelemetryFlush(): void {
-    if (this.telemetryFlushTimer !== null) {
+    if (this.telemetryFlushTimer !== null || this.config.telemetry === false) {
       return;
     }
 
+    const flushInterval = this.config.telemetry.flushIntervalMs ?? DEFAULT_TELEMETRY_FLUSH_MS;
     this.telemetryFlushTimer = window.setTimeout(() => {
       this.telemetryFlushTimer = null;
       void this.flushTelemetryNow();
-    }, TELEMETRY_FLUSH_MS);
+    }, flushInterval);
+  }
+
+  private scheduleTelemetryRetry(): void {
+    if (this.telemetryRetryTimer !== null || this.telemetryBuffer.length === 0 || this.config.telemetry === false) {
+      return;
+    }
+
+    const attempts = this.telemetryBuffer.reduce((max, event) => Math.max(max, event.retryCount), 0);
+    const maxRetries = this.config.telemetry.maxRetries ?? DEFAULT_TELEMETRY_MAX_RETRIES;
+    if (attempts > maxRetries) {
+      return;
+    }
+
+    const backoff = this.config.telemetry.retryBackoffMs ?? DEFAULT_TELEMETRY_RETRY_BACKOFF_MS;
+    const delay = backoff * Math.pow(2, attempts);
+    this.telemetryRetryTimer = window.setTimeout(() => {
+      this.telemetryRetryTimer = null;
+      void this.flushTelemetryNow();
+    }, delay);
   }
 
   private async flushTelemetryNow(): Promise<void> {
-    if (this.config.telemetry === false || this.telemetryBuffer.length === 0) {
+    if (this.config.telemetry === false || this.telemetryFlushInProgress || !window.fetch) {
       return;
     }
 
-    const payload = this.telemetryBuffer.splice(0, TELEMETRY_BATCH_LIMIT);
-    if (payload.length === 0) {
-      return;
-    }
+    this.telemetryFlushInProgress = true;
+    let payload: TelemetryRecord[] = [];
 
     try {
-      await fetch(this.config.telemetry.beaconUrl ?? DEFAULT_TELEMETRY_BEACON, {
+      this.flushTelemetryQueue();
+      if (this.telemetryBuffer.length === 0) {
+        return;
+      }
+
+      if (!navigator.onLine) {
+        const queued = this.enforceTelemetryQueueLimit(
+          uniqueTelemetry(this.loadTelemetryQueue().concat(this.telemetryBuffer))
+        );
+        this.telemetryBuffer = [];
+        this.saveTelemetryQueue(queued);
+        return;
+      }
+
+      const batchSize = this.config.telemetry.batchSize ?? DEFAULT_TELEMETRY_BATCH_SIZE;
+      payload = this.telemetryBuffer.splice(0, batchSize);
+      if (payload.length === 0) {
+        return;
+      }
+
+      const response = await fetch(this.config.telemetry.beaconUrl ?? DEFAULT_TELEMETRY_BEACON, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ events: payload })
       });
 
-      this.lastTelemetryDispatch = Date.now();
-    } catch {
-      const queue = this.loadTelemetryQueue().concat(payload);
-      this.saveTelemetryQueue(uniqueTelemetry(queue));
-    }
+      if (!response.ok) {
+        throw new Error(`telemetry response: ${response.status}`);
+      }
 
-    this.flushTelemetryQueue();
+      this.lastTelemetryDispatch = Date.now();
+      this.telemetryBuffer = this.enforceTelemetryQueueLimit(uniqueTelemetry(this.telemetryBuffer));
+
+      if (this.telemetryBuffer.length > 0) {
+        this.scheduleTelemetryFlush();
+      }
+    } catch {
+      const maxRetries = this.config.telemetry.maxRetries ?? DEFAULT_TELEMETRY_MAX_RETRIES;
+      const retried = payload.map((event) => ({ ...event, retryCount: event.retryCount + 1 }));
+      const queue = this.loadTelemetryQueue().concat(retried);
+      this.saveTelemetryQueue(uniqueTelemetry(this.enforceTelemetryQueueLimit(queue)));
+
+      const remainingRetries = retried.filter((event) => event.retryCount <= maxRetries);
+      this.telemetryBuffer = this.enforceTelemetryQueueLimit(uniqueTelemetry(this.telemetryBuffer.concat(remainingRetries)));
+      this.scheduleTelemetryRetry();
+    } finally {
+      this.telemetryFlushInProgress = false;
+    }
   }
 
   private flushTelemetryQueue(): void {
-    if (this.config.telemetry === false || this.telemetryBuffer.length >= TELEMETRY_BATCH_LIMIT) {
+    if (this.config.telemetry === false || this.telemetryBuffer.length > 0) {
       return;
-    }
-
-    const now = Date.now();
-    if (now - this.lastTelemetryDispatch > TELEMETRY_FLUSH_MS) {
-      void this.flushTelemetryNow();
     }
 
     const queued = this.loadTelemetryQueue();
-    if (!queued.length) {
+    if (queued.length === 0) {
       return;
     }
 
-    this.telemetryBuffer.push(...queued);
+    this.telemetryBuffer = this.enforceTelemetryQueueLimit(uniqueTelemetry(queued));
     this.saveTelemetryQueue([]);
   }
 
-  private loadTelemetryQueue(): TelemetryEvent[] {
+  private enforceTelemetryQueueLimit<T extends TelemetryRecord>(records: T[]): T[] {
+    const maxSize = this.config.telemetry ? this.config.telemetry.maxQueueSize ?? DEFAULT_TELEMETRY_MAX_QUEUE : DEFAULT_TELEMETRY_MAX_QUEUE;
+    return records.slice(-maxSize);
+  }
+
+  private loadTelemetryQueue(): TelemetryRecord[] {
     if (!this.config.telemetry) {
       return [];
     }
@@ -1661,14 +1836,14 @@ export class SitelenLayerPlugin {
         return [];
       }
 
-      const parsed = JSON.parse(raw) as TelemetryEvent[];
+      const parsed = JSON.parse(raw) as TelemetryRecord[];
       return Array.isArray(parsed) ? parsed : [];
     } catch {
       return [];
     }
   }
 
-  private saveTelemetryQueue(queue: TelemetryEvent[]): void {
+  private saveTelemetryQueue(queue: TelemetryRecord[]): void {
     if (!this.config.telemetry) {
       return;
     }
@@ -1700,11 +1875,11 @@ function recordsToFrequency(records: Array<{ token: string; count: number }>): R
   return result;
 }
 
-function uniqueTelemetry(queue: TelemetryEvent[]): TelemetryEvent[] {
+function uniqueTelemetry(queue: TelemetryRecord[]): TelemetryRecord[] {
   const seen = new Set<string>();
 
   return queue.filter((event) => {
-    const key = `${event.fingerprint}:${event.event}:${event.timestamp}`;
+    const key = event.id || `${event.fingerprint}:${event.event}:${event.timestamp}`;
     if (seen.has(key)) {
       return false;
     }

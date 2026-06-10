@@ -7,6 +7,9 @@
   --slp-font-sitelen-pona: 'sitelen seli kiwen asuki', 'nasin nanpa', sans-serif;
   --slp-debug-bg: rgba(18, 20, 24, 0.92);
   --slp-debug-fg: #f1f5fb;
+  --slp-toggle-collapsed-width: 44px;
+  --slp-toggle-preview-size: 17px;
+  --slp-toggle-motion-duration: 190ms;
   --slp-toggle-shadow: 0 10px 22px rgba(0, 0, 0, 0.25);
   --slp-toggle-radius: 14px;
   --slp-toggle-gap: 4px;
@@ -43,23 +46,92 @@
   pointer-events: auto;
 }
 
+.slp-toggle__preview {
+  width: var(--slp-toggle-collapsed-width);
+  height: 36px;
+  border-radius: 999px;
+  display: none;
+  justify-content: center;
+  align-items: center;
+  font-size: var(--slp-toggle-preview-size);
+  color: var(--slp-toggle-fg);
+}
+
+.slp-toggle--floating .slp-toggle__preview {
+  display: inline-flex;
+}
+
 .slp-toggle--floating .slp-toggle__btn {
-  width: 28px;
+  width: 0;
+  min-width: 0;
   transition: width var(--slp-toggle-transition), min-width var(--slp-toggle-transition),
     border-color var(--slp-toggle-transition), border-radius var(--slp-toggle-transition),
     color var(--slp-toggle-transition), background var(--slp-toggle-transition);
   overflow: hidden;
+  padding: 0;
   white-space: nowrap;
 }
 
-.slp-toggle--floating:hover {
+.slp-toggle--floating:not(.slp-toggle--mounted) {
+  width: var(--slp-toggle-collapsed-width);
+}
+
+.slp-toggle--floating.slp-toggle--collapsed .slp-toggle__preview {
+  opacity: 1;
+}
+
+.slp-toggle--floating.slp-toggle--expanded {
+  width: auto;
+  padding-inline: 6px;
+  gap: var(--slp-toggle-gap);
+}
+
+.slp-toggle--floating.slp-toggle--collapsed .slp-toggle__btn {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.slp-toggle--floating.slp-toggle--expanded .slp-toggle__btn {
+  width: 28px;
+  min-width: 28px;
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.slp-toggle--floating.slp-toggle--expanded .slp-toggle__btn.is-active {
+  width: 34px;
+  min-width: 34px;
+}
+
+.slp-toggle--floating:hover,
+.slp-toggle--floating.slp-toggle--expanded,
+.slp-toggle--floating:focus-within {
   box-shadow: 0 14px 32px rgba(0, 0, 0, 0.3);
 }
 
-.slp-toggle--floating:hover .slp-toggle__btn {
+.slp-toggle--floating:not(.slp-toggle--collapsed) .slp-toggle__btn {
   width: auto;
   min-width: 34px;
   padding-inline: 10px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .slp-toggle--floating:hover .slp-toggle__btn,
+  .slp-toggle--floating.slp-toggle--expanded .slp-toggle__btn {
+    width: auto;
+    min-width: 34px;
+    padding-inline: 10px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .slp-toggle,
+  .slp-toggle__btn,
+  .slp-layer--transition-fade,
+  .slp-layer--transition-blur {
+    transition: none !important;
+    animation: none !important;
+  }
 }
 
 .slp-toggle--fade {

@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createSitelenLayerPlugin } from './index';
 
+const sleep = async (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
+
 describe('plugin dom integration', () => {
   beforeEach(() => {
     document.body.innerHTML = '';
@@ -476,6 +478,129 @@ describe('plugin dom integration', () => {
     expect(secondSnapshot.totalSwitches).toBeGreaterThanOrEqual(firstSnapshot.totalSwitches);
     expect(typeof plugin.getConfig()).toBe('object');
 
+    plugin.destroy();
+  });
+
+  it('supports windowed layer usage snapshots', () => {
+    document.body.innerHTML = `
+      <div id="app">
+        <p>toki pona li pona e jan pona li moku e kili lon tomo xyz</p>
+      </div>
+    `;
+
+    const plugin = createSitelenLayerPlugin({
+      container: '#app',
+      defaultLayer: 'sitelen-emoji',
+      sitelenPona: { enabled: false }
+    });
+
+    plugin.init();
+
+    const base = plugin.getLayerUsageSnapshot();
+    const sinceFuture = new Date(Date.now() + 60_000).toISOString();
+    const futureWindow = plugin.getLayerUsageSnapshot({ since: sinceFuture });
+    expect(base.totalSwitches).toBeGreaterThan(0);
+    expect(futureWindow.totalSwitches).toBe(0);
+
+    const latinButton = document.querySelector('button[data-layer="latin"]') as HTMLButtonElement;
+    latinButton.click();
+
+    const lastOne = plugin.getLayerUsageSnapshot({ maxEntries: 1 });
+    expect(lastOne.totalSwitches).toBe(1);
+    expect(lastOne.countsByLayer.latin).toBe(1);
+
+    const shortWindow = plugin.getLayerUsageSnapshot({ timeWindowMs: 10000 });
+    expect(shortWindow.totalSwitches).toBeGreaterThanOrEqual(base.totalSwitches);
+    expect(shortWindow.windowSeconds).toBeGreaterThanOrEqual(10);
+
+    plugin.destroy();
+  });
+
+  it('keeps telemetry off by default and does not emit beacons', async () => {
+    const fetchSpy = vi.spyOn(window, 'fetch').mockResolvedValue(
+      new Response('{}', { status: 200, headers: { 'content-type': 'application/json' } })
+    );
+
+    document.body.innerHTML = `
+      <div id="app">
+        <p>toki pona li pona e jan pona li moku e kili lon tomo xyz</p>
+      </div>
+    `;
+
+    const plugin = createSitelenLayerPlugin({
+      container: '#app',
+      defaultLayer: 'sitelen-emoji',
+      sitelenPona: { enabled: false },
+      telemetry: false
+    });
+
+    plugin.init();
+
+    const latinButton = document.querySelector('button[data-layer="latin"]') as HTMLButtonElement;
+    latinButton.click();
+    await sleep(30);
+
+    expect(fetchSpy).not.toHaveBeenCalled();
+    fetchSpy.mockRestore();
+    plugin.destroy();
+  });
+
+  it('stores telemetry while offline and retries on online event', async () => {
+    const fetchSpy = vi.spyOn(window, 'fetch');
+    const attempts: Array<Record<string, string>> = [];
+    fetchSpy.mockImplementation(() => {
+      attempts.push({});
+      if (attempts.length === 1) {
+        return Promise.reject(new Error('offline'));
+      }
+      return Promise.resolve(new Response('{}', { status: 200 }));
+    });
+
+    Object.defineProperty(navigator, 'onLine', {
+      value: false,
+      configurable: true
+    });
+
+    document.body.innerHTML = `
+      <div id="app">
+        <p>toki pona li pona e jan pona li moku e kili lon tomo xyz</p>
+      </div>
+    `;
+
+    const plugin = createSitelenLayerPlugin({
+      container: '#app',
+      defaultLayer: 'sitelen-emoji',
+      sitelenPona: { enabled: false },
+      telemetry: {
+        enabled: true,
+        beaconUrl: '/telemetry',
+        sampleRate: 1,
+        batchSize: 10,
+        flushIntervalMs: 10,
+        retryBackoffMs: 5,
+        maxRetries: 1
+      }
+    });
+
+    plugin.init();
+    await sleep(25);
+
+    const queued = JSON.parse(localStorage.getItem('sitelen-layer-plugin:telemetry-queue') ?? '[]');
+    expect(Array.isArray(queued)).toBe(true);
+    expect(queued.length).toBeGreaterThan(0);
+    const ids = queued.map((entry: { id?: string }) => entry.id);
+    expect(new Set(ids).size).toBe(ids.length);
+
+    Object.defineProperty(navigator, 'onLine', {
+      value: true,
+      configurable: true
+    });
+    window.dispatchEvent(new Event('online'));
+    await sleep(40);
+
+    expect(fetchSpy).toHaveBeenCalled();
+    expect(attempts.length).toBeGreaterThan(1);
+    fetchSpy.mockRestore();
     plugin.destroy();
   });
 });

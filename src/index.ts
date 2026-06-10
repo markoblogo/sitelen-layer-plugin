@@ -44,6 +44,7 @@ export type {
   ResolvedProfile,
   SitelenLayer,
   SitelenLayerPluginConfig,
+  LayerUsageSnapshotOptions,
   SitelenLayerProfile,
   SitelenLayerProfileMatch,
   SitelenPonaConfig,

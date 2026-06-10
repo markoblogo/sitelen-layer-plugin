@@ -454,8 +454,9 @@ If `ligature-font` mode shows collapsed uppercase strings such as `MANIALA` or `
 - `plugin.getDiagnostics()`
 - `plugin.getConfig()` (debug helper; returns resolved configuration)
 - `plugin.getLayerUsageSnapshot()`
+- `plugin.getLayerUsageSnapshot({ since?, timeWindowMs?, maxEntries? })` (windowed usage diagnostics)
 - `plugin.getUnmappedSnapshot({ layer?, limit?, since? })`
-- `plugin.renderUsageDashboard(container)` (lightweight local dashboard)
+- `plugin.renderUsageDashboard(container, { since?, timeWindowMs?, maxEntries? })` (lightweight local dashboard)
 - `plugin.showDiagnosticsOverlay()` / `plugin.hideDiagnosticsOverlay()`
 
 ## Extended Configuration
@@ -485,11 +486,16 @@ createSitelenLayerPlugin({
     transition: 'fade-blur', // 'none' | 'fade' | 'fade-blur'
     customCssVars: {
       '--slp-toggle-bg': 'rgba(14, 24, 64, 0.82)',
-      '--slp-toggle-shadow': '0 12px 26px rgba(0,0,0,0.34)'
+      '--slp-toggle-shadow': '0 12px 26px rgba(0,0,0,0.34)',
+      '--slp-toggle-collapsed-width': '44px',
+      '--slp-toggle-preview-size': '17px'
     }
   }
 });
 ```
+
+Floating toggle now has a collapsed state (default) with a tiny preview glyph; hover/focus expands to full layer buttons.
+The collapsed/expanded behavior respects reduced-motion preferences (`prefers-reduced-motion`).
 
 ### Telemetry (opt-in)
 
@@ -500,6 +506,11 @@ createSitelenLayerPlugin({
     beaconUrl: '/api/sitelen-layer-telemetry',
     sampleRate: 0.2,
     includeLayerUsage: true,
+    batchSize: 24,
+    flushIntervalMs: 2500,
+    maxQueueSize: 240,
+    maxRetries: 2,
+    retryBackoffMs: 1000,
     hashSalt: 'site-secret-optional'
   }
 });
