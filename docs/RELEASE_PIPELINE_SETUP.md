@@ -56,3 +56,5 @@ git push origin v0.3.0
 ```
 
 or trigger manually with `dryRun=false`.
+
+For production runs, `package.json` version must match the tag (`vX.Y.Z` → `X.Y.Z`) exactly. The workflow now validates this before build; release is blocked on mismatch.

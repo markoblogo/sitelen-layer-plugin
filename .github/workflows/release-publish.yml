@@ -73,6 +73,18 @@ jobs:
             exit 1
           fi
 
+      - name: Verify package version matches release tag
+        run: |
+          package_version="$(node -p "require('./package.json').version")"
+          release_version="${{ steps.release_tag.outputs.tag }}"
+          release_version="${release_version#v}"
+
+          if [[ "$package_version" != "$release_version" ]]; then
+            echo "Version mismatch: package.json has $package_version but tag is v$release_version"
+            echo "Align both before running production release."
+            exit 1
+          fi
+
       - name: Resolve release label
         id: release_name
         run: |
