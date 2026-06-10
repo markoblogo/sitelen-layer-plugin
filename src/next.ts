@@ -5,6 +5,8 @@ import { memo } from 'react';
 import { useSitelenLayerPlugin } from './react';
 import type { SitelenLayerPluginConfig } from './types';
 
+const isBrowser = typeof window !== 'undefined';
+
 export interface SitelenLayerNextProviderProps {
   children?: ReactNode;
   config?: SitelenLayerPluginConfig;
@@ -18,7 +20,7 @@ function SitelenLayerNextProviderInner({
   enabled = true,
   autoInit = true
 }: SitelenLayerNextProviderProps): ReactNode {
-  if (typeof window === 'undefined') {
+  if (!isBrowser) {
     return children ?? null;
   }
 
@@ -39,7 +41,7 @@ export const SitelenLayerNextHeaderMount = memo(function SitelenLayerNextHeaderM
   autoInit,
   headerSelector
 }: SitelenLayerNextHeaderMountProps): ReactNode {
-  if (typeof window === 'undefined') {
+  if (!isBrowser) {
     return children ?? null;
   }
 

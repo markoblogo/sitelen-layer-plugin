@@ -41,6 +41,62 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 }
 ```
 
+### Build helpers (auto-init)
+
+```ts
+// vite.config.ts
+import { defineConfig } from 'vite';
+import sitelenLayerVitePlugin from 'sitelen-layer-plugin/vite-plugin';
+
+export default defineConfig({
+  plugins: [
+    sitelenLayerVitePlugin({
+      autoImportStyle: true,
+      autoInit: true,
+      container: '#app',
+      initConfig: { toggleMount: '#header-toggle', toggleMode: 'inline' }
+    })
+  ]
+});
+```
+
+```js
+// webpack.config.js
+const { SitelenLayerWebpackPlugin } = require('sitelen-layer-plugin/webpack-plugin');
+
+module.exports = {
+  plugins: [
+    new SitelenLayerWebpackPlugin({
+      autoInjectStyles: true,
+      autoInit: true,
+      initConfig: { container: '#app', showToggle: true }
+    })
+  ]
+};
+```
+
+### Theme polishing (size / transition examples)
+
+```ts
+import { createSitelenLayerPlugin } from 'sitelen-layer-plugin';
+
+createSitelenLayerPlugin({
+  container: '#app',
+  toggleSize: 'lg',
+  theme: {
+    transition: 'fade-blur',
+    customCssVars: {
+      '--slp-toggle-motion-duration': '220ms',
+      '--slp-toggle-collapsed-width': '48px',
+      '--slp-toggle-collapsed-height': '48px',
+      '--slp-toggle-preview-size': '18px',
+      '--slp-toggle-shadow': '0 16px 32px rgba(0, 0, 0, 0.32)',
+      '--slp-toggle-preview-font-weight': '700'
+    }
+  }
+}).init();
+```
+
 ### Vue 3
 
 ```ts
@@ -70,6 +126,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return <SitelenLayerNextProvider config={{ container: '#app' }}>{children}</SitelenLayerNextProvider>;
 }
 ```
+
+### v0.3.0 integration track (PoC docs)
+
+See [docs/V0.3_INTEGRATION_TRACK.md](docs/V0.3_INTEGRATION_TRACK.md) for browser extension and CMS adapter starter patterns (Obsidian / Logseq / WordPress / Ghost).
 
 ## Copy-Paste Integrations
 

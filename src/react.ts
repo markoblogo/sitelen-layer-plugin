@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import type { ReactNode } from 'react';
 import { createSitelenLayerPlugin } from './index';
 import type { SitelenLayerPluginConfig } from './types';
@@ -9,6 +9,38 @@ export interface UseSitelenLayerPluginOptions {
   enabled?: boolean;
 }
 
+function serializeConfig(config: SitelenLayerPluginConfig): string {
+  const safeStringify = (value: unknown): unknown => {
+    if (value === null || value === undefined) {
+      return value;
+    }
+
+    if (typeof value === 'function') {
+      return '__function__';
+    }
+
+    if (typeof Element !== 'undefined' && value instanceof Element) {
+      return `element:${value.tagName.toLowerCase()}#${value.id || 'no-id'}`;
+    }
+
+    return value;
+  };
+
+  try {
+    return JSON.stringify(config, (_key, value) => {
+      const normalized = safeStringify(value);
+      if (normalized && typeof normalized === 'object' && !Array.isArray(normalized) && !(normalized instanceof Date)) {
+        return normalized;
+      }
+
+      return normalized;
+    });
+  } catch (error) {
+    // no reason to fail hook wiring on non-serializable values; fall back to shape-only key
+    return String(Object.keys(config).sort().join(','));
+  }
+}
+
 export function useSitelenLayerPlugin(
   config: SitelenLayerPluginConfig = {},
   options: UseSitelenLayerPluginOptions = {}
@@ -16,6 +48,7 @@ export function useSitelenLayerPlugin(
   const pluginRef = useRef<SitelenLayerPlugin | null>(null);
   const enabled = options.enabled ?? true;
   const autoInit = options.autoInit ?? true;
+  const configSignature = useMemo(() => serializeConfig(config), [config]);
 
   useEffect(() => {
     if (!enabled || !autoInit || typeof window === 'undefined') {
@@ -30,7 +63,7 @@ export function useSitelenLayerPlugin(
       plugin.destroy();
       pluginRef.current = null;
     };
-  }, [config, enabled, autoInit]);
+  }, [configSignature, enabled, autoInit]);
 
   return pluginRef.current;
 }

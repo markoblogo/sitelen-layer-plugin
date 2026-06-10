@@ -211,9 +211,10 @@ function defaultThemeConfig(): Required<ThemeConfig> {
   return {
     transition: 'fade',
     customCssVars: {
+      '--slp-toggle-motion-duration': '190ms',
       '--slp-toggle-shadow': '0 10px 22px rgba(0,0,0,0.25)',
       '--slp-toggle-radius': '14px',
-      '--slp-toggle-transition': '180ms ease'
+      '--slp-toggle-transition': '190ms ease'
     }
   };
 }
@@ -1593,9 +1594,19 @@ export class SitelenLayerPlugin {
     });
 
     if (this.config.theme.transition) {
-      const transition = this.config.theme.transition === 'none' ? '0ms' : '180ms ease';
+      const transition = this.config.theme.transition === 'none' ? '0ms' : 'var(--slp-toggle-motion-duration, 190ms) ease';
       target.style.setProperty('--slp-toggle-transition', transition);
     }
+  }
+
+  private static parseTransitionMs(value: string): number {
+    const match = value.match(/([0-9]*\.?[0-9]+)\s*ms/);
+    if (!match) {
+      return 190;
+    }
+
+    const parsed = Number.parseFloat(match[1]);
+    return Number.isFinite(parsed) ? parsed : 190;
   }
 
   private applyLayerTransition(): void {
@@ -1620,7 +1631,7 @@ export class SitelenLayerPlugin {
 
       this.container.classList.remove('slp-layer--transition-fade', 'slp-layer--transition-blur');
       this.layerTransitionTimer = null;
-    }, 220);
+    }, SitelenLayerPlugin.parseTransitionMs(getComputedStyle(this.container).getPropertyValue('--slp-toggle-motion-duration')) + 80);
   }
 
   private stopLayerTransition(): void {

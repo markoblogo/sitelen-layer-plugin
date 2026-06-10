@@ -1,6 +1,7 @@
 export interface SitelenLayerWebpackPluginOptions {
   autoInjectStyles?: boolean;
   autoInit?: boolean;
+  styleHref?: string;
   initConfig?: Record<string, unknown>;
   scriptBody?: string;
 }
@@ -56,6 +57,7 @@ export class SitelenLayerWebpackPlugin {
     this.options = {
       autoInjectStyles: options.autoInjectStyles ?? true,
       autoInit: options.autoInit ?? false,
+      styleHref: options.styleHref ?? STYLE_ENTRY,
       initConfig: options.initConfig ?? {},
       scriptBody: options.scriptBody
     };
@@ -75,7 +77,28 @@ export class SitelenLayerWebpackPlugin {
     }
 
     const inlineScript = createInlineInitScript(this.options);
-    const scriptTag = `<script type="module">${inlineScript}</script>`;
+    const styleTag = `<link rel="stylesheet" href="${this.options.styleHref}">`;
+    const scriptTag = `<script type="module" data-sitelen-layer-autoinit="true">${inlineScript}</script>`;
+    const marker = /(<!doctype html>[\s\S]*?<\/head>)/i;
+    const ensureStyleInjected = (html: string): string => {
+      if (!this.options.autoInjectStyles) {
+        return html;
+      }
+
+      if (html.includes(this.options.styleHref)) {
+        return html;
+      }
+
+      if (this.options.styleHref === STYLE_ENTRY) {
+        return html.replace(marker, `$1${styleTag}`);
+      }
+
+      if (/<\/head>/.test(html)) {
+        return html.replace('</head>', `${styleTag}</head>`);
+      }
+
+      return html.replace('</body>', `${styleTag}</body>`);
+    };
 
     compiler.hooks.thisCompilation?.tap('SitelenLayerWebpackPlugin', (compilation: any) => {
       const htmlHook =
@@ -84,11 +107,13 @@ export class SitelenLayerWebpackPlugin {
         compilation.hooks.htmlWebpackPluginAfterHtmlProcessing;
 
       htmlHook?.tapAsync?.('SitelenLayerWebpackPlugin', (data: { html: string }, cb: (err: Error | null, result?: unknown) => void) => {
-        data.html = data.html.replace('</body>', `${scriptTag}</body>`);
+        const withStyle = ensureStyleInjected(data.html);
+        data.html = withStyle.replace(/(<\/body>)/i, `${scriptTag}$1`);
         cb(null, data);
       });
       htmlHook?.tap?.('SitelenLayerWebpackPlugin', (data: { html: string }) => {
-        data.html = data.html.replace('</body>', `${scriptTag}</body>`);
+        const withStyle = ensureStyleInjected(data.html);
+        data.html = withStyle.replace(/(<\/body>)/i, `${scriptTag}$1`);
         return data;
       });
     });

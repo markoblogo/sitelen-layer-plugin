@@ -7,13 +7,17 @@
   --slp-font-sitelen-pona: 'sitelen seli kiwen asuki', 'nasin nanpa', sans-serif;
   --slp-debug-bg: rgba(18, 20, 24, 0.92);
   --slp-debug-fg: #f1f5fb;
-  --slp-toggle-collapsed-width: 44px;
-  --slp-toggle-preview-size: 17px;
   --slp-toggle-motion-duration: 190ms;
+  --slp-toggle-collapsed-width: 44px;
+  --slp-toggle-collapsed-height: 44px;
+  --slp-toggle-preview-size: 17px;
   --slp-toggle-shadow: 0 10px 22px rgba(0, 0, 0, 0.25);
+  --slp-toggle-shadow-hover: 0 14px 28px rgba(0, 0, 0, 0.32);
   --slp-toggle-radius: 14px;
   --slp-toggle-gap: 4px;
-  --slp-toggle-transition: 180ms ease;
+  --slp-toggle-transition: var(--slp-toggle-motion-duration) ease;
+  --slp-toggle-preview-font-weight: 600;
+  --slp-toggle-floating-bp: 680px;
 }
 
 .slp-toggle {
@@ -48,13 +52,14 @@
 
 .slp-toggle__preview {
   width: var(--slp-toggle-collapsed-width);
-  height: 36px;
+  height: var(--slp-toggle-collapsed-height);
   border-radius: 999px;
   display: none;
   justify-content: center;
   align-items: center;
   font-size: var(--slp-toggle-preview-size);
   color: var(--slp-toggle-fg);
+  font-weight: var(--slp-toggle-preview-font-weight);
 }
 
 .slp-toggle--floating .slp-toggle__preview {
@@ -106,7 +111,7 @@
 .slp-toggle--floating:hover,
 .slp-toggle--floating.slp-toggle--expanded,
 .slp-toggle--floating:focus-within {
-  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.3);
+  box-shadow: var(--slp-toggle-shadow-hover);
 }
 
 .slp-toggle--floating:not(.slp-toggle--collapsed) .slp-toggle__btn {
@@ -193,6 +198,21 @@
   width: 42px;
   height: 42px;
   font-size: 20px;
+}
+
+@media (max-width: 720px) and (min-width: 0px) {
+  .slp-toggle--size-lg .slp-toggle__btn {
+    width: 36px;
+    height: 36px;
+    font-size: 18px;
+  }
+
+  .slp-toggle {
+    --slp-toggle-collapsed-width: 40px;
+    --slp-toggle-collapsed-height: 40px;
+    --slp-toggle-preview-size: 16px;
+    --slp-toggle-radius: 12px;
+  }
 }
 
 .slp-toggle--mounted .slp-toggle__btn {

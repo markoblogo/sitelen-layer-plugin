@@ -1,13 +1,17 @@
 import type { HtmlTagDescriptor, Plugin } from 'vite';
+import type { SitelenLayerPluginConfig } from './types';
 
 export interface SitelenLayerVitePluginOptions {
   autoImportStyle?: boolean;
   autoInit?: boolean;
   container?: string;
-  initConfig?: Record<string, unknown>;
+  initConfig?: SitelenLayerPluginConfig;
+  styleHref?: string;
   scriptBody?: string;
   injectInto?: 'head' | 'body';
 }
+
+const DEFAULT_STYLE_HREF = 'sitelen-layer-plugin/styles.css';
 
 function createInitCode(options: SitelenLayerVitePluginOptions): string {
   const initConfig = {
@@ -25,6 +29,7 @@ export function sitelenLayerVitePlugin(options: SitelenLayerVitePluginOptions = 
     autoInit: options.autoInit ?? false,
     container: options.container ?? '',
     initConfig: options.initConfig ?? {},
+    styleHref: options.styleHref ?? DEFAULT_STYLE_HREF,
     scriptBody: options.scriptBody ?? '',
     injectInto: options.injectInto ?? 'head'
   };
@@ -40,7 +45,7 @@ export function sitelenLayerVitePlugin(options: SitelenLayerVitePluginOptions = 
           tag: 'link',
           attrs: {
             rel: 'stylesheet',
-            href: 'sitelen-layer-plugin/styles.css'
+            href: normalized.styleHref
           },
           injectTo: 'head'
         });
