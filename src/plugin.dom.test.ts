@@ -440,4 +440,42 @@ describe('plugin dom integration', () => {
     expect(plugin.getDiagnostics().toggleSize).toBe('lg');
     plugin.destroy();
   });
+
+  it('exposes layer usage and unmapped snapshots', () => {
+    document.body.innerHTML = `
+      <div id="app">
+        <p>toki pona li pona e jan pona li moku e kili lon tomo xyz xyz</p>
+      </div>
+    `;
+
+    const plugin = createSitelenLayerPlugin({
+      container: '#app',
+      defaultLayer: 'sitelen-emoji',
+      sitelenPona: { enabled: false }
+    });
+
+    plugin.init();
+
+    const firstSnapshot = plugin.getLayerUsageSnapshot();
+    const firstUnmapped = plugin.getUnmappedSnapshot({
+      layer: 'sitelen-emoji',
+      limit: 5
+    });
+
+    expect(firstSnapshot.activeLayer).toBe('sitelen-emoji');
+    expect(firstSnapshot.countsByLayer['sitelen-emoji']).toBeGreaterThan(0);
+    expect(firstUnmapped.layer).toBe('sitelen-emoji');
+    expect(firstUnmapped.tokens.length).toBeGreaterThan(0);
+
+    const latinButton = document.querySelector('button[data-layer="latin"]') as HTMLButtonElement;
+    latinButton.click();
+
+    const secondSnapshot = plugin.getLayerUsageSnapshot();
+    expect(secondSnapshot.activeLayer).toBe('latin');
+    expect(secondSnapshot.countsByLayer.latin).toBeGreaterThan(0);
+    expect(secondSnapshot.totalSwitches).toBeGreaterThanOrEqual(firstSnapshot.totalSwitches);
+    expect(typeof plugin.getConfig()).toBe('object');
+
+    plugin.destroy();
+  });
 });

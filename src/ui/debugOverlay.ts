@@ -51,6 +51,10 @@ export class DebugOverlay {
       diagnostics.sitelenPonaCoverageRatio === null ? null : Math.round(diagnostics.sitelenPonaCoverageRatio * 100);
     this.content.textContent = [
       `TP score: ${scorePercent}%`,
+      `Detector: ${diagnostics.detectorVersion}`,
+      `Confidence: ${Math.round(diagnostics.confidence * 100)}%`,
+      `Detection: ${diagnostics.detectionStrategy} (${diagnostics.lexiconProfile})`,
+      `Ignored short tokens: ${diagnostics.ignoredShortTokens}`,
       `Threshold: ${Math.round(diagnostics.threshold * 100)}%`,
       `Eligible: ${diagnostics.eligible ? 'yes' : 'no'}`,
       `Tokens: ${diagnostics.totalTokens}`,

@@ -7,6 +7,10 @@
   --slp-font-sitelen-pona: 'sitelen seli kiwen asuki', 'nasin nanpa', sans-serif;
   --slp-debug-bg: rgba(18, 20, 24, 0.92);
   --slp-debug-fg: #f1f5fb;
+  --slp-toggle-shadow: 0 10px 22px rgba(0, 0, 0, 0.25);
+  --slp-toggle-radius: 14px;
+  --slp-toggle-gap: 4px;
+  --slp-toggle-transition: 180ms ease;
 }
 
 .slp-toggle {
@@ -15,12 +19,14 @@
   bottom: 16px;
   z-index: 2147483647;
   display: inline-flex;
-  gap: 4px;
+  gap: var(--slp-toggle-gap);
   padding: 6px;
-  border-radius: 999px;
+  border-radius: var(--slp-toggle-radius);
   border: 1px solid var(--slp-toggle-border);
   background: var(--slp-toggle-bg);
   backdrop-filter: blur(8px);
+  box-shadow: var(--slp-toggle-shadow);
+  transition: all var(--slp-toggle-transition);
 }
 
 .slp-toggle--mounted {
@@ -30,6 +36,66 @@
   border-radius: 999px;
   padding: 2px;
   gap: 2px;
+  transition: none;
+}
+
+.slp-toggle--floating {
+  pointer-events: auto;
+}
+
+.slp-toggle--floating .slp-toggle__btn {
+  width: 28px;
+  transition: width var(--slp-toggle-transition), min-width var(--slp-toggle-transition),
+    border-color var(--slp-toggle-transition), border-radius var(--slp-toggle-transition),
+    color var(--slp-toggle-transition), background var(--slp-toggle-transition);
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.slp-toggle--floating:hover {
+  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.3);
+}
+
+.slp-toggle--floating:hover .slp-toggle__btn {
+  width: auto;
+  min-width: 34px;
+  padding-inline: 10px;
+}
+
+.slp-toggle--fade {
+  animation: slp-toggle-fade-in 160ms ease;
+}
+
+.slp-toggle--fade-blur {
+  animation: slp-toggle-fade-in 180ms ease;
+}
+
+.slp-layer--transition-fade,
+.slp-layer--transition-blur {
+  transition: opacity var(--slp-toggle-transition);
+}
+
+.slp-layer--transition-fade {
+  opacity: 0.94;
+}
+
+.slp-layer--transition-blur {
+  opacity: 0.94;
+  filter: blur(1px);
+}
+
+@keyframes slp-toggle-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+    filter: blur(3px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
 }
 
 .slp-toggle__btn {
@@ -162,4 +228,19 @@
   padding: 10px;
   white-space: pre-wrap;
   pointer-events: none;
+}
+
+.slp-layer-usage-dashboard {
+  position: fixed;
+  right: 16px;
+  top: 16px;
+  z-index: 2147483600;
+  padding: 10px;
+  background: rgba(12,12,12,0.9);
+  color: #f4f6ff;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.18);
+  font-size: 11px;
+  white-space: pre-wrap;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }

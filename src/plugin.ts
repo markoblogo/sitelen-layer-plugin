@@ -19,12 +19,19 @@ import { DebugOverlay } from './ui/debugOverlay';
 import type {
   LayerModeSource,
   MutationObserverConfig,
+  LayerUsageSnapshot,
+  TelemetryConfig,
   ObserverStats,
   PluginDiagnostics,
+  DetectionConfig,
   SitelenLayer,
   SitelenLayerPluginConfig,
   SitelenPonaConfig,
+  ThemeConfig,
+  TelemetryEvent,
   SpaNavigationConfig,
+  UnmappedSnapshot,
+  UnmappedSnapshotOptions,
   TokenFrequency,
   ToggleLabels,
   ToggleMode,
@@ -40,6 +47,11 @@ const DEFAULT_TOGGLE_MODE: ToggleMode = 'auto';
 const DEFAULT_TOGGLE_SIZE: ToggleSize = 'md';
 const TOP_UNMAPPED_LIMIT = 10;
 const PLUGIN_UI_SELECTOR = '[data-sitelen-layer-ui]';
+const DEFAULT_TELEMETRY_SAMPLE_RATE = 1;
+const DEFAULT_TELEMETRY_BEACON = '/sitelen-layer/telemetry';
+const TELEMETRY_QUEUE_KEY = 'sitelen-layer-plugin:telemetry-queue';
+const TELEMETRY_FLUSH_MS = 2500;
+const TELEMETRY_BATCH_LIMIT = 20;
 
 const HISTORY_PATCH_MARKER = '__sitelenLayerPatched__';
 const historyListeners = new Set<() => void>();
@@ -159,7 +171,10 @@ function defaultSitelenPonaConfig(config?: SitelenPonaConfig): Required<SitelenP
     fontCssUrl: config?.fontCssUrl ?? '',
     applyToRoot: config?.applyToRoot ?? false,
     className: config?.className ?? '',
-    renderStrategy: config?.renderStrategy ?? 'ligature-font'
+    renderStrategy: config?.renderStrategy ?? 'ligature-font',
+    transformStrategy: config?.transformStrategy ?? 'mvp',
+    transformerEndpoint: config?.transformerEndpoint ?? '',
+    transformerTimeoutMs: config?.transformerTimeoutMs ?? 2500
   };
 }
 
@@ -175,6 +190,40 @@ function defaultMutationObserverConfig(
     observeAttributes: source.observeAttributes ?? false,
     attributeFilter: source.attributeFilter,
     maxBatchNodes: source.maxBatchNodes ?? DEFAULT_MAX_BATCH_NODES
+  };
+}
+
+function defaultDetectionConfig(config: SitelenLayerPluginConfig): Required<DetectionConfig> {
+  return {
+    strategy: config.detection?.strategy ?? 'weighted',
+    lexiconProfile: config.detection?.lexiconProfile ?? 'default',
+    minTokens: config.detection?.minTokens ?? 4,
+    rareTokenPenalty: config.detection?.rareTokenPenalty ?? 0
+  };
+}
+
+function defaultThemeConfig(): Required<ThemeConfig> {
+  return {
+    transition: 'fade',
+    customCssVars: {
+      '--slp-toggle-shadow': '0 10px 22px rgba(0,0,0,0.25)',
+      '--slp-toggle-radius': '14px',
+      '--slp-toggle-transition': '180ms ease'
+    }
+  };
+}
+
+function defaultTelemetryConfig(config: SitelenLayerPluginConfig): TelemetryConfig | false {
+  if (config.telemetry === false || config.telemetry == null) {
+    return false;
+  }
+
+  return {
+    enabled: true,
+    beaconUrl: config.telemetry.beaconUrl ?? DEFAULT_TELEMETRY_BEACON,
+    sampleRate: config.telemetry.sampleRate ?? DEFAULT_TELEMETRY_SAMPLE_RATE,
+    includeLayerUsage: config.telemetry.includeLayerUsage ?? false,
+    hashSalt: config.telemetry.hashSalt
   };
 }
 
@@ -205,6 +254,9 @@ interface ResolvedConfig {
   diagnosticsOverlay: boolean;
   storageKey: string;
   requireDominantTokiPona: boolean;
+  theme: Required<ThemeConfig>;
+  detection: Required<DetectionConfig>;
+  telemetry: false | TelemetryConfig;
   mutationObserver: Required<Omit<MutationObserverConfig, 'attributeFilter'>> & { attributeFilter?: string[] };
   spaNavigation: Required<SpaNavigationConfig>;
   sitelenPona: Required<SitelenPonaConfig>;
@@ -219,6 +271,8 @@ interface ResolvedConfig {
 export class SitelenLayerPlugin {
   private readonly config: ResolvedConfig;
   private readonly sitelenPonaClassName: string;
+  private readonly initAt = new Date().toISOString();
+  private readonly offlineQueueStorageKey = TELEMETRY_QUEUE_KEY;
 
   private container: Element | null = null;
   private toggleMount: Element | null = null;
@@ -249,15 +303,22 @@ export class SitelenLayerPlugin {
   private hashChangeListener: (() => void) | null = null;
   private historyListener: (() => void) | null = null;
   private navigationTimer: number | null = null;
+  private layerTransitionTimer: number | null = null;
 
   private detectorPass = false;
   private eligible = false;
   private totalTokens = 0;
   private recognizedTokens = 0;
   private score = 0;
+  private confidence = 0;
+  private detectorVersion = 'simple:default:v1';
+  private ignoredShortTokens = 0;
+  private detectionStrategy: 'simple' | 'weighted' = 'weighted';
+  private lexiconProfile: 'default' | 'extended' = 'default';
   private ignoredCandidates = 0;
   private sitelenPonaFontReady = false;
   private sitelenPonaWarning: string | undefined;
+  private sitelenPonaApiWarningLogged = false;
   private sitelenPonaReplacementCount = 0;
   private sitelenPonaWordTokenCount = 0;
   private sitelenPonaTopUnmapped: TokenFrequency[] = [];
@@ -268,6 +329,20 @@ export class SitelenLayerPlugin {
   private emojiTopUnmapped: TokenFrequency[] = [];
   private containerInfo = 'body';
   private lastUpdatedAt = new Date(0).toISOString();
+  private layerUsage = {
+    latin: 0,
+    'sitelen-pona': 0,
+    'sitelen-emoji': 0
+  };
+  private totalLayerChanges = 0;
+  private unmappedHistory: Record<SitelenLayer, Array<{ token: string; count: number; layer: SitelenLayer; timestamp: string }>> = {
+    latin: [],
+    'sitelen-pona': [],
+    'sitelen-emoji': []
+  };
+  private telemetryFlushTimer: number | null = null;
+  private telemetryBuffer: TelemetryEvent[] = [];
+  private lastTelemetryDispatch = 0;
 
   private initialLayerResolved = false;
   private observerStats: ObserverStats = {
@@ -280,6 +355,19 @@ export class SitelenLayerPlugin {
   constructor(config: SitelenLayerPluginConfig = {}) {
     const validatedLayers = (config.layers ?? DEFAULT_LAYERS).filter(isValidLayer);
     const sitelenPona = defaultSitelenPonaConfig(config.sitelenPona);
+    const baseTheme = defaultThemeConfig();
+    const theme: Required<ThemeConfig> = {
+      transition: config.theme?.transition ?? baseTheme.transition,
+      customCssVars: {
+        ...baseTheme.customCssVars,
+        ...(config.theme?.customCssVars ?? {})
+      }
+    };
+    const detection = {
+      ...defaultDetectionConfig(config),
+      rareTokenPenalty: defaultDetectionConfig(config).rareTokenPenalty ?? 0
+    };
+    const telemetry = defaultTelemetryConfig(config);
 
     const baseLayers = validatedLayers.length > 0 ? validatedLayers : DEFAULT_LAYERS;
     const layers = sitelenPona.enabled ? baseLayers : baseLayers.filter((layer) => layer !== 'sitelen-pona');
@@ -301,6 +389,14 @@ export class SitelenLayerPlugin {
       diagnosticsOverlay: config.diagnosticsOverlay ?? false,
       storageKey: config.storageKey ?? DEFAULT_STORAGE_KEY,
       requireDominantTokiPona: config.requireDominantTokiPona ?? true,
+      theme,
+      detection: {
+        strategy: detection.strategy,
+        lexiconProfile: detection.lexiconProfile,
+        minTokens: detection.minTokens,
+        rareTokenPenalty: detection.rareTokenPenalty
+      },
+      telemetry,
       mutationObserver: defaultMutationObserverConfig(config),
       spaNavigation: defaultSpaNavigationConfig(config),
       sitelenPona,
@@ -339,6 +435,9 @@ export class SitelenLayerPlugin {
       this.warnDebug('toggleMount target was not found; falling back to floating mode');
     }
 
+    this.applyThemeVars();
+    this.flushTelemetryQueue();
+
     if (this.config.sitelenPona.enabled) {
       ensureFontCssLink(this.config.sitelenPona.fontCssUrl || undefined);
       applySitelenPonaVariables(this.container, this.config.sitelenPona);
@@ -360,6 +459,13 @@ export class SitelenLayerPlugin {
     }
 
     this.refresh();
+
+    this.recordTelemetryEvent('init', {
+      threshold: this.config.threshold,
+      strategy: this.config.detection.strategy,
+      lexiconProfile: this.config.detection.lexiconProfile,
+      layer: this.currentLayer
+    });
 
     if (this.config.mutationObserver.enabled) {
       this.startObserving();
@@ -394,12 +500,14 @@ export class SitelenLayerPlugin {
     this.stopNavigationObservation();
     this.destroyToggle();
     this.applyLayer('latin', 'default', false);
+    this.stopLayerTransition();
 
     if (this.container) {
       clearSitelenPonaVariables(this.container, this.config.sitelenPona.applyToRoot);
     }
 
     this.hideDiagnosticsOverlay();
+    this.flushTelemetryNow();
     this.initialized = false;
   }
 
@@ -408,6 +516,11 @@ export class SitelenLayerPlugin {
       totalTokens: this.totalTokens,
       recognizedTokens: this.recognizedTokens,
       score: this.score,
+      confidence: this.confidence,
+      detectorVersion: this.detectorVersion,
+      detectionStrategy: this.detectionStrategy,
+      ignoredShortTokens: this.ignoredShortTokens,
+      lexiconProfile: this.lexiconProfile,
       pass: this.detectorPass,
       threshold: this.config.threshold,
       eligible: this.eligible,
@@ -439,6 +552,61 @@ export class SitelenLayerPlugin {
       lastUpdatedAt: this.lastUpdatedAt,
       observerStats: { ...this.observerStats }
     };
+  }
+
+  getConfig(): Readonly<ResolvedConfig> {
+    return this.config;
+  }
+
+  getLayerUsageSnapshot(): LayerUsageSnapshot {
+    return {
+      countsByLayer: { ...this.layerUsage },
+      totalSwitches: this.totalLayerChanges,
+      activeLayer: this.currentLayer,
+      collectedAt: new Date().toISOString()
+    };
+  }
+
+  getUnmappedSnapshot(options?: UnmappedSnapshotOptions): UnmappedSnapshot {
+    const layer = options?.layer ?? 'sitelen-emoji';
+    const limit = options?.limit ?? TOP_UNMAPPED_LIMIT;
+    const since = options?.since;
+    const records = this.unmappedHistory[layer] ?? [];
+
+    const filtered = since
+      ? records.filter((record) => !since || record.timestamp >= since)
+      : records;
+
+    const merged = this.toTopUnmapped(recordsToFrequency(filtered));
+    return {
+      layer,
+      tokens: merged.slice(0, limit),
+      since,
+      generatedAt: new Date().toISOString()
+    };
+  }
+
+  renderUsageDashboard(container: Element | string): void {
+    const containerElement = resolveElement(container) ?? null;
+    if (!containerElement) {
+      this.warnDebug('renderUsageDashboard container not found');
+      return;
+    }
+
+    const snapshot = this.getLayerUsageSnapshot();
+    const root = document.createElement('div');
+    root.className = 'slp-layer-usage-dashboard';
+    const total = Math.max(1, snapshot.totalSwitches);
+
+    const latin = snapshot.countsByLayer.latin;
+    const sitelenPona = snapshot.countsByLayer['sitelen-pona'];
+    const sitelenEmoji = snapshot.countsByLayer['sitelen-emoji'];
+
+    root.textContent = `Layer usage snapshot\nlatin: ${latin} (${Math.round((latin / total) * 100)}%)\nsitelen-pona: ${sitelenPona} (${Math.round((sitelenPona / total) * 100)}%)\nsitelen-emoji: ${sitelenEmoji} (${Math.round((sitelenEmoji / total) * 100)}%)`;
+    root.setAttribute('data-sitelen-layer-ui', 'usage-dashboard');
+    root.style.cssText =
+      'position: fixed; right: 16px; top: 16px; z-index: 2147483600; padding: 8px; background: rgba(12,12,12,0.88); color: #f4f6ff; border-radius: 10px; font-size: 11px; white-space: pre-wrap; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;';
+    containerElement.appendChild(root);
   }
 
   showDiagnosticsOverlay(): void {
@@ -494,18 +662,27 @@ export class SitelenLayerPlugin {
 
     const textForDetection = this.textNodes.map((node) => this.originalTextMap.get(node) ?? '').join(' ');
     const detectorResult = analyzeTokiPonaDominance(textForDetection, {
-      threshold: this.config.threshold
+      threshold: this.config.threshold,
+      strategy: this.config.detection.strategy,
+      lexiconProfile: this.config.detection.lexiconProfile,
+      minTokens: this.config.detection.minTokens,
+      rareTokenPenalty: this.config.detection.rareTokenPenalty
     });
 
     this.totalTokens = detectorResult.totalTokens;
     this.recognizedTokens = detectorResult.recognizedTokens;
+    this.confidence = detectorResult.confidence;
     this.score = detectorResult.score;
+    this.detectorVersion = detectorResult.detectorVersion;
+    this.ignoredShortTokens = detectorResult.ignoredShortTokens;
+    this.detectionStrategy = this.config.detection.strategy;
+    this.lexiconProfile = this.config.detection.lexiconProfile;
     this.detectorPass = detectorResult.pass;
 
     this.eligible = resolveEligibility(detectorResult.pass, this.config.requireDominantTokiPona);
     this.updateLayerAvailability();
 
-    if (this.totalTokens < 8) {
+    if (this.totalTokens < this.config.detection.minTokens) {
       this.warnDebug('detector has low token count; confidence may be weak');
     }
 
@@ -534,7 +711,21 @@ export class SitelenLayerPlugin {
     }
 
     this.lastUpdatedAt = new Date().toISOString();
+    this.recordTelemetryEvent('perform_full_refresh', {
+      layer: this.currentLayer,
+      score: this.score,
+      eligible: this.eligible
+    });
     this.publishDiagnostics(previousEligibility !== this.eligible);
+  }
+
+  private ensureLayerUsage(layer: SitelenLayer): void {
+    this.layerUsage[layer] = (this.layerUsage[layer] ?? 0) + 1;
+  }
+
+  private recordLayerUsage(layer: SitelenLayer): void {
+    this.ensureLayerUsage(layer);
+    this.totalLayerChanges += 1;
   }
 
   private resolveNextLayer(): { layer: SitelenLayer; source: LayerModeSource } {
@@ -562,7 +753,22 @@ export class SitelenLayerPlugin {
 
     if (eligibilityChanged) {
       this.config.onEligibilityChange?.(this.eligible, diagnostics);
+      this.recordTelemetryEvent('eligibility_change', {
+        eligible: this.eligible,
+        score: this.score,
+        confidence: this.confidence,
+        totalTokens: this.totalTokens
+      });
     }
+
+    this.recordTelemetryEvent('diagnostics', {
+      layer: this.currentLayer,
+      score: this.score,
+      confidence: this.confidence,
+      eligible: this.eligible,
+      totalTokens: this.totalTokens,
+      activeLayer: this.currentLayer
+    });
 
     this.config.onDiagnostics?.(diagnostics);
     this.debugOverlay?.update(diagnostics);
@@ -599,6 +805,7 @@ export class SitelenLayerPlugin {
       size: this.config.toggleSize,
       mountedIn: this.toggleMountedIn,
       labels: this.config.toggleLabels,
+      transition: this.config.theme.transition,
       onChange: (layer) => {
         const appliedLayer = this.applyLayer(layer, 'default');
         this.preferredLayer = appliedLayer;
@@ -631,6 +838,10 @@ export class SitelenLayerPlugin {
       modeSource = layer === 'sitelen-pona' ? 'fallback-font-missing' : modeSource;
     }
 
+    if (this.currentLayer !== effectiveLayer) {
+      this.applyLayerTransition();
+    }
+
     this.withObserverPaused(() => {
       this.isApplyingLayer = true;
       try {
@@ -639,7 +850,7 @@ export class SitelenLayerPlugin {
         if (effectiveLayer === 'sitelen-emoji') {
           this.applyEmojiLayer(this.textNodes);
         } else if (effectiveLayer === 'sitelen-pona' && this.config.sitelenPona.renderStrategy === 'transform') {
-          this.applySitelenPonaTransformLayer(this.textNodes);
+          this.applySitelenPonaTransformLayer(this.textNodes, this.config.sitelenPona.transformStrategy);
         }
 
         applyContainerLayerClass(container, effectiveLayer, this.sitelenPonaClassName);
@@ -652,6 +863,7 @@ export class SitelenLayerPlugin {
     this.modeSource = modeSource;
     this.toggle?.setActiveLayer(effectiveLayer);
     this.lastUpdatedAt = new Date().toISOString();
+    this.recordLayerUsage(effectiveLayer);
 
     const diagnostics = this.getDiagnostics();
     this.config.onDiagnostics?.(diagnostics);
@@ -661,6 +873,13 @@ export class SitelenLayerPlugin {
 
     if (emitLayerChange) {
       this.config.onLayerChange?.(effectiveLayer, diagnostics);
+      this.recordTelemetryEvent('layer_change', {
+        layer: effectiveLayer,
+        modeSource,
+        eligible: this.eligible,
+        tokenCount: this.totalTokens,
+        score: this.score
+      });
     }
 
     return effectiveLayer;
@@ -699,9 +918,41 @@ export class SitelenLayerPlugin {
     });
 
     this.emojiTopUnmapped = this.toTopUnmapped(unmappedCounts);
+    this.pushUnmappedSnapshot('sitelen-emoji', this.emojiTopUnmapped);
   }
 
-  private applySitelenPonaTransformLayer(nodes: Text[]): void {
+  private applySitelenPonaTransformLayer(
+    nodes: Text[],
+    strategy: SitelenPonaConfig['transformStrategy'] = 'mvp'
+  ): void {
+    if (strategy === 'rules') {
+      this.applySitelenPonaTransformLayer(nodes, 'mvp');
+      return;
+    }
+
+    if (strategy === 'api' && !this.config.sitelenPona.transformerEndpoint) {
+      if (!this.sitelenPonaApiWarningLogged) {
+        this.sitelenPonaWarning =
+          'sitelen-pona transform API strategy is enabled, but transformerEndpoint is not set. Fallback to local MVP mapping.';
+        this.warnDebug(this.sitelenPonaWarning);
+        this.sitelenPonaApiWarningLogged = true;
+      }
+      
+      this.sitelenPonaWarning =
+        'sitelen-pona transform API strategy is configured without endpoint; fallback to local MVP mapping.';
+    }
+
+    if (strategy === 'api' && this.config.sitelenPona.transformerEndpoint && !this.sitelenPonaApiWarningLogged) {
+      this.sitelenPonaWarning =
+        'sitelen-pona transform API strategy is currently a future extension point and is not implemented yet. Using local MVP mapping.';
+      this.warnDebug(this.sitelenPonaWarning);
+      this.sitelenPonaApiWarningLogged = true;
+    }
+
+    if (strategy === 'api') {
+      strategy = 'mvp';
+    }
+
     this.sitelenPonaReplacementCount = 0;
     this.sitelenPonaWordTokenCount = 0;
     const unmappedCounts: Record<string, number> = {};
@@ -720,6 +971,7 @@ export class SitelenLayerPlugin {
     });
 
     this.sitelenPonaTopUnmapped = this.toTopUnmapped(unmappedCounts);
+    this.pushUnmappedSnapshot('sitelen-pona', this.sitelenPonaTopUnmapped);
   }
 
   private setTextNodeValue(node: Text, value: string): void {
@@ -864,6 +1116,7 @@ export class SitelenLayerPlugin {
     this.emojiReplacementCount = replacedTokens;
     this.emojiWordTokenCount = wordTokens;
     this.emojiTopUnmapped = this.toTopUnmapped(unmappedCounts);
+    this.pushUnmappedSnapshot('sitelen-emoji', this.emojiTopUnmapped);
   }
 
   private updateSitelenPonaCoverageStats(nodes: Text[]): void {
@@ -886,6 +1139,7 @@ export class SitelenLayerPlugin {
     this.sitelenPonaReplacementCount = replacedTokens;
     this.sitelenPonaWordTokenCount = wordTokens;
     this.sitelenPonaTopUnmapped = this.toTopUnmapped(unmappedCounts);
+    this.pushUnmappedSnapshot('sitelen-pona', this.sitelenPonaTopUnmapped);
   }
 
   private mergeTokenCounts(target: Record<string, number>, source: Record<string, number>): void {
@@ -1235,6 +1489,197 @@ export class SitelenLayerPlugin {
     }
   }
 
+  private applyThemeVars(): void {
+    const container = this.container ?? document.body;
+    if (!container) {
+      return;
+    }
+
+    const target = (this.config.sitelenPona.applyToRoot ? document.documentElement : container) as HTMLElement;
+    Object.entries(this.config.theme.customCssVars ?? {}).forEach(([variable, value]) => {
+      target.style.setProperty(variable, value);
+    });
+
+    if (this.config.theme.transition) {
+      const transition = this.config.theme.transition === 'none' ? '0ms' : '180ms ease';
+      target.style.setProperty('--slp-toggle-transition', transition);
+    }
+  }
+
+  private applyLayerTransition(): void {
+    if (!this.container || this.config.theme.transition === 'none') {
+      return;
+    }
+
+    if (this.layerTransitionTimer !== null) {
+      window.clearTimeout(this.layerTransitionTimer);
+    }
+
+    const transitionClass =
+      this.config.theme.transition === 'fade-blur' ? 'slp-layer--transition-blur' : 'slp-layer--transition-fade';
+    this.container.classList.remove('slp-layer--transition-fade', 'slp-layer--transition-blur');
+    this.container.classList.add(transitionClass);
+
+    this.layerTransitionTimer = window.setTimeout(() => {
+      if (!this.container) {
+        this.layerTransitionTimer = null;
+        return;
+      }
+
+      this.container.classList.remove('slp-layer--transition-fade', 'slp-layer--transition-blur');
+      this.layerTransitionTimer = null;
+    }, 220);
+  }
+
+  private stopLayerTransition(): void {
+    if (this.layerTransitionTimer !== null) {
+      window.clearTimeout(this.layerTransitionTimer);
+      this.layerTransitionTimer = null;
+    }
+
+    if (this.container) {
+      this.container.classList.remove('slp-layer--transition-fade', 'slp-layer--transition-blur');
+    }
+  }
+
+  private pushUnmappedSnapshot(layer: SitelenLayer, topUnmapped: TokenFrequency[]): void {
+    const history = this.unmappedHistory[layer] ?? [];
+    const timestamp = new Date().toISOString();
+
+    topUnmapped.forEach((entry) => {
+      if (entry.count > 0) {
+        history.push({ ...entry, layer, timestamp });
+      }
+    });
+
+    this.unmappedHistory[layer] = history.slice(-200);
+  }
+
+  private recordTelemetryEvent(event: string, payload: Record<string, unknown>): void {
+    if (this.config.telemetry === false) {
+      return;
+    }
+
+    if (!window.fetch) {
+      return;
+    }
+
+    if (Math.random() > (this.config.telemetry.sampleRate ?? DEFAULT_TELEMETRY_SAMPLE_RATE)) {
+      return;
+    }
+
+    this.telemetryBuffer.push(this.createTelemetryEvent(event, payload));
+    this.scheduleTelemetryFlush();
+  }
+
+  private createTelemetryEvent(event: string, payload: Record<string, unknown>): TelemetryEvent {
+    const fingerprint = this.createTelemetryFingerprint();
+    return {
+      version: 1,
+      fingerprint,
+      event,
+      timestamp: new Date().toISOString(),
+      payload: {
+        ...payload,
+        ...(this.config.telemetry && this.config.telemetry.includeLayerUsage
+          ? { layerUsage: this.getLayerUsageSnapshot() }
+          : {})
+      }
+    };
+  }
+
+  private createTelemetryFingerprint(): string {
+    const salt = this.config.telemetry && this.config.telemetry.hashSalt ? this.config.telemetry.hashSalt : 'sitelen-layer-plugin';
+    const base = `${window.location?.hostname ?? ''}|${document.documentElement?.lang ?? ''}|${salt}`;
+    return simpleHash(base);
+  }
+
+  private scheduleTelemetryFlush(): void {
+    if (this.telemetryFlushTimer !== null) {
+      return;
+    }
+
+    this.telemetryFlushTimer = window.setTimeout(() => {
+      this.telemetryFlushTimer = null;
+      void this.flushTelemetryNow();
+    }, TELEMETRY_FLUSH_MS);
+  }
+
+  private async flushTelemetryNow(): Promise<void> {
+    if (this.config.telemetry === false || this.telemetryBuffer.length === 0) {
+      return;
+    }
+
+    const payload = this.telemetryBuffer.splice(0, TELEMETRY_BATCH_LIMIT);
+    if (payload.length === 0) {
+      return;
+    }
+
+    try {
+      await fetch(this.config.telemetry.beaconUrl ?? DEFAULT_TELEMETRY_BEACON, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ events: payload })
+      });
+
+      this.lastTelemetryDispatch = Date.now();
+    } catch {
+      const queue = this.loadTelemetryQueue().concat(payload);
+      this.saveTelemetryQueue(uniqueTelemetry(queue));
+    }
+
+    this.flushTelemetryQueue();
+  }
+
+  private flushTelemetryQueue(): void {
+    if (this.config.telemetry === false || this.telemetryBuffer.length >= TELEMETRY_BATCH_LIMIT) {
+      return;
+    }
+
+    const now = Date.now();
+    if (now - this.lastTelemetryDispatch > TELEMETRY_FLUSH_MS) {
+      void this.flushTelemetryNow();
+    }
+
+    const queued = this.loadTelemetryQueue();
+    if (!queued.length) {
+      return;
+    }
+
+    this.telemetryBuffer.push(...queued);
+    this.saveTelemetryQueue([]);
+  }
+
+  private loadTelemetryQueue(): TelemetryEvent[] {
+    if (!this.config.telemetry) {
+      return [];
+    }
+
+    try {
+      const raw = window.localStorage.getItem(this.offlineQueueStorageKey);
+      if (!raw) {
+        return [];
+      }
+
+      const parsed = JSON.parse(raw) as TelemetryEvent[];
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }
+
+  private saveTelemetryQueue(queue: TelemetryEvent[]): void {
+    if (!this.config.telemetry) {
+      return;
+    }
+
+    try {
+      window.localStorage.setItem(this.offlineQueueStorageKey, JSON.stringify(queue));
+    } catch {
+      // keep silently
+    }
+  }
+
   private warnDebug(message: string): void {
     if (!this.config.debug) {
       return;
@@ -1243,4 +1688,38 @@ export class SitelenLayerPlugin {
     // eslint-disable-next-line no-console
     console.warn(`[sitelen-layer-plugin] ${message}`);
   }
+}
+
+function recordsToFrequency(records: Array<{ token: string; count: number }>): Record<string, number> {
+  const result: Record<string, number> = {};
+
+  records.forEach((record) => {
+    result[record.token] = (result[record.token] ?? 0) + record.count;
+  });
+
+  return result;
+}
+
+function uniqueTelemetry(queue: TelemetryEvent[]): TelemetryEvent[] {
+  const seen = new Set<string>();
+
+  return queue.filter((event) => {
+    const key = `${event.fingerprint}:${event.event}:${event.timestamp}`;
+    if (seen.has(key)) {
+      return false;
+    }
+
+    seen.add(key);
+    return true;
+  });
+}
+
+function simpleHash(input: string): string {
+  let hash = 0;
+  for (let i = 0; i < input.length; i++) {
+    hash = (hash << 5) - hash + input.charCodeAt(i);
+    hash |= 0;
+  }
+
+  return `${hash >>> 0}`;
 }

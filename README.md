@@ -227,6 +227,42 @@ import 'sitelen-layer-plugin/sitelen-pona-font.css';
 
 The CSS entry defines `@font-face` for `sitelen seli kiwen asuki` and points to the bundled font asset. Attribution and license notes live in `assets/fonts/README.md` and `assets/fonts/OFL-sitelen-seli-kiwen.txt` in the npm package.
 
+## Additional exports
+
+- `sitelen-layer-plugin/sitelen-emoji-truth` — export only the bundled mapping and metadata.
+- `sitelen-layer-plugin/cli` — typed CLI helpers (`scan`, `topUnmappedEmojiFromText`) for programmatic tooling.
+
+```ts
+import { topUnmappedEmojiFromText } from 'sitelen-layer-plugin/cli';
+
+const top = topUnmappedEmojiFromText('...some latin text...', 12);
+```
+
+## CLI (v0.2.x)
+
+```bash
+npx sitelen-layer-cli scan ./public/index.html
+npx sitelen-layer-cli emoji-candidates ./public/index.html --limit 20 --json
+```
+
+## CDN / IIFE usage (experimental)
+
+Built artifacts include `es`, `umd`, and `iife` formats.
+
+```html
+<script src="https://cdn.jsdelivr.net/npm/sitelen-layer-plugin@0.1.1/dist/sitelen-layer-plugin.iife.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sitelen-layer-plugin@0.1.1/dist/sitelen-layer-plugin.css">
+
+<script>
+  const plugin = window.SitelenLayerPlugin.createSitelenLayerPlugin({
+    container: '#app'
+  });
+  plugin.init();
+</script>
+```
+
+For strict CSP setups, either keep the script external-only and set `script-src` accordingly, or avoid inline initialization code.
+
 ## Sitelen Pona Font Config Example
 
 ```ts
@@ -369,7 +405,60 @@ If `ligature-font` mode shows collapsed uppercase strings such as `MANIALA` or `
 - `plugin.refresh()`
 - `plugin.destroy()`
 - `plugin.getDiagnostics()`
+- `plugin.getConfig()` (debug helper; returns resolved configuration)
+- `plugin.getLayerUsageSnapshot()`
+- `plugin.getUnmappedSnapshot({ layer?, limit?, since? })`
+- `plugin.renderUsageDashboard(container)` (lightweight local dashboard)
 - `plugin.showDiagnosticsOverlay()` / `plugin.hideDiagnosticsOverlay()`
+
+## Extended Configuration
+
+### Detection
+
+```ts
+createSitelenLayerPlugin({
+  detection: {
+    strategy: 'weighted', // 'simple' | 'weighted'
+    lexiconProfile: 'extended', // 'default' | 'extended'
+    minTokens: 8,
+    rareTokenPenalty: -0.45 // applies to pu/ku/su in weighted strategy
+  }
+});
+```
+
+- `strategy` defaults to `weighted`
+- `minTokens` guard prevents unstable short texts
+- diagnostics expose `detectionStrategy`, `lexiconProfile`, `ignoredShortTokens`, and `detectorVersion`
+
+### Theme
+
+```ts
+createSitelenLayerPlugin({
+  theme: {
+    transition: 'fade-blur', // 'none' | 'fade' | 'fade-blur'
+    customCssVars: {
+      '--slp-toggle-bg': 'rgba(14, 24, 64, 0.82)',
+      '--slp-toggle-shadow': '0 12px 26px rgba(0,0,0,0.34)'
+    }
+  }
+});
+```
+
+### Telemetry (opt-in)
+
+```ts
+createSitelenLayerPlugin({
+  telemetry: {
+    enabled: true,
+    beaconUrl: '/api/sitelen-layer-telemetry',
+    sampleRate: 0.2,
+    includeLayerUsage: true,
+    hashSalt: 'site-secret-optional'
+  }
+});
+```
+
+Telemetry events are disabled by default (`telemetry` absent/`false`).
 
 ## Package Usage
 

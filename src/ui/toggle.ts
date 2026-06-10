@@ -8,6 +8,7 @@ interface ToggleOptions {
   size: ToggleSize;
   mountedIn?: string;
   labels?: ToggleLabels;
+  transition?: 'none' | 'fade' | 'fade-blur';
   disabledLayers?: SitelenLayer[];
   onChange: (layer: SitelenLayer) => void;
 }
@@ -33,6 +34,9 @@ export class LayerToggle {
     this.root = document.createElement('div');
     this.root.className = 'slp-toggle';
     this.root.classList.add(`slp-toggle--size-${this.options.size}`);
+    if (this.options.transition && this.options.transition !== 'none') {
+      this.root.classList.add(`slp-toggle--${this.options.transition}`);
+    }
     this.root.setAttribute('data-sitelen-layer-ui', 'toggle');
     this.root.setAttribute('role', 'group');
     this.root.setAttribute('aria-label', 'Sitelen layer switcher');
@@ -74,6 +78,7 @@ export class LayerToggle {
     if (mountPoint) {
       mountPoint.appendChild(this.root);
       this.root.classList.add('slp-toggle--mounted');
+      this.root.classList.remove('slp-toggle--floating');
       this.root.setAttribute('data-slp-toggle-mode', 'inline');
       if (this.options.mountedIn) {
         this.root.setAttribute('data-slp-toggle-mounted-in', this.options.mountedIn);
@@ -83,6 +88,7 @@ export class LayerToggle {
     }
 
     document.body.appendChild(this.root);
+    this.root.classList.add('slp-toggle--floating');
     this.root.classList.remove('slp-toggle--mounted');
     this.root.setAttribute('data-slp-toggle-mode', 'floating');
     this.root.removeAttribute('data-slp-toggle-mounted-in');

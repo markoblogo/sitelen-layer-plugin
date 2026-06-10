@@ -16,6 +16,54 @@ export interface Diagnostics {
   pass: boolean;
 }
 
+export interface LayerUsageSnapshot {
+  countsByLayer: Record<SitelenLayer, number>;
+  totalSwitches: number;
+  activeLayer: SitelenLayer;
+  collectedAt: string;
+}
+
+export interface UnmappedSnapshot {
+  layer: SitelenLayer;
+  tokens: TokenFrequency[];
+  generatedAt: string;
+  since?: string;
+}
+
+export interface UnmappedSnapshotOptions {
+  layer?: SitelenLayer;
+  limit?: number;
+  since?: string;
+}
+
+export interface DetectionConfig {
+  strategy?: 'simple' | 'weighted';
+  lexiconProfile?: 'default' | 'extended';
+  minTokens?: number;
+  rareTokenPenalty?: number;
+}
+
+export interface TelemetryEvent {
+  version: number;
+  fingerprint: string;
+  event: string;
+  timestamp: string;
+  payload: Record<string, unknown>;
+}
+
+export interface TelemetryConfig {
+  enabled: true;
+  beaconUrl?: string;
+  sampleRate?: number;
+  includeLayerUsage?: boolean;
+  hashSalt?: string;
+}
+
+export interface ThemeConfig {
+  transition?: 'none' | 'fade' | 'fade-blur';
+  customCssVars?: Record<string, string>;
+}
+
 export interface ObserverStats {
   mutationsObserved: number;
   batchesProcessed: number;
@@ -31,6 +79,11 @@ export interface TokenFrequency {
 
 export interface PluginDiagnostics extends Diagnostics {
   threshold: number;
+  detectorVersion: string;
+  detectionStrategy: 'simple' | 'weighted';
+  confidence: number;
+  ignoredShortTokens: number;
+  lexiconProfile: 'default' | 'extended';
   eligible: boolean;
   activeLayer: SitelenLayer;
   containerInfo: string;
@@ -60,6 +113,9 @@ export interface PluginDiagnostics extends Diagnostics {
 
 export interface DetectorResult extends Diagnostics {
   tokens: string[];
+  confidence: number;
+  detectorVersion: string;
+  ignoredShortTokens: number;
 }
 
 export interface SitelenPonaConfig {
@@ -69,6 +125,9 @@ export interface SitelenPonaConfig {
   applyToRoot?: boolean;
   className?: string;
   renderStrategy?: 'ligature-font' | 'font-only' | 'transform';
+  transformStrategy?: 'mvp' | 'rules' | 'api';
+  transformerEndpoint?: string;
+  transformerTimeoutMs?: number;
 }
 
 export interface ToggleLabelSpec {
@@ -113,6 +172,9 @@ export interface SitelenLayerPluginConfig {
   diagnosticsOverlay?: boolean;
   storageKey?: string;
   requireDominantTokiPona?: boolean;
+  theme?: ThemeConfig;
+  detection?: DetectionConfig;
+  telemetry?: false | TelemetryConfig;
 
   observeMutations?: boolean;
   mutationDebounceMs?: number;
