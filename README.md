@@ -137,6 +137,13 @@ Release candidate demo pages:
 - `demo/integration/vite-webpack-route-guard.html`
 - `demo/integration/extension-csp-flow.html`
 
+Release preflight:
+
+- `npm run pack:adapters`
+- `npm run smoke:adapters`
+- `npm run smoke:publication`
+- `npm run ci:release`
+
 ## Copy-Paste Integrations
 
 ### 1) Static landing page

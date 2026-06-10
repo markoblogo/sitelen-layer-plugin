@@ -7,12 +7,14 @@
 - v0.3 integration pack: browser-extension, obsidian, logseq, wordpress, ghost PoC artifacts under `adapters/*`.
 - `entry.json` manifests for adapter distribution metadata and release workflow.
 - `demo/integration/*` pages for smoke/manual testing of route guard and extension flow.
+- `npm run pack:adapters`, `npm run smoke:adapters`, `npm run smoke:publication`, and GitHub workflow `.github/workflows/release-preflight.yml` for v0.3.0 preflight packaging validation.
 
 ### Improved
 
 - `routeInclude` / `routeExclude` support in `vite-plugin` and `webpack-plugin` for allowlist/denylist initialization control.
 - CSP-safe integration safeguards in browser-extension PoC: route-guarded bootstrap and idempotent plugin instance guard.
 - Packaging updates in `package.json` to include adapter and demo artifacts in distributed `files` list.
+- Added CI preflight checks for adapter zip artifacts and npm tarball (`npm pack`) output in addition to `npm run build` and tests.
 
 ### Docs
 
