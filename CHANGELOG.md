@@ -1,11 +1,17 @@
 # Changelog
 
-## v0.3.6 (in progress)
+## v0.3.7 (release prep)
 
 ### Planned
 
 - Finalize v0.3.0-track polish and UX/integration hardening before final production publish.
-- Run staged release validation (`publishMode=trusted`, `dryRun=true`) and then production (`dryRun=false`) from `release-publish.yml`.
+- Run release validation with a fresh tag (`publishMode=trusted`, `dryRun=true`, then `dryRun=false`) from `release-publish.yml`.
+
+### Fixed
+
+- Package metadata cleanup for npm publish stability:
+  - normalized `repository.url` to `git+https://github.com/markoblogo/sitelen-layer-plugin.git`.
+  - removed `./` prefix in `bin` path to avoid publish auto-corrections.
 
 ## v0.3.5
 
