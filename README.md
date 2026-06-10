@@ -149,6 +149,13 @@ Release publication:
 - Tag push `v*` triggers `.github/workflows/release-publish.yml`.
 - Workflow builds, tests, creates adapter zip packages, publishes to npm, and creates a GitHub Release with zip artifacts + npm tarball.
 
+See [docs/RELEASE_PIPELINE_SETUP.md](/Users/antonbiletskiy-volokh/Documents/Codex/2026-06-10/markoblogo-sitelen-layer-plugin-https-github/work/repo/docs/RELEASE_PIPELINE_SETUP.md) for:
+
+- `NPM_TOKEN` setup in GitHub Actions secrets,
+- `GITHUB_TOKEN` permission requirement,
+- staging release run (`workflow_dispatch`, `dryRun=true`),
+- production release flow.
+
 ## Copy-Paste Integrations
 
 ### 1) Static landing page

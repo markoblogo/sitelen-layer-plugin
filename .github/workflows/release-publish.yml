@@ -10,6 +10,11 @@ on:
         description: 'Release tag (required for manual dispatch). Example: v0.3.0'
         required: true
         type: string
+      dryRun:
+        description: 'Staging run: skip npm publish, still create/update GitHub release with artifacts'
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: write
@@ -21,6 +26,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -31,6 +38,15 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Resolve publish mode
+        id: publish_mode
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ github.event.inputs.dryRun }}" == "true" ]]; then
+            echo "run_publish=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "run_publish=true" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Resolve release tag
         id: release_tag
@@ -49,6 +65,23 @@ jobs:
             exit 1
           fi
 
+      - name: Verify tag exists
+        run: |
+          tag_name="${{ steps.release_tag.outputs.tag }}"
+          if ! git rev-parse --verify --quiet "$tag_name^{commit}"; then
+            echo "Tag $tag_name not found in repository"
+            exit 1
+          fi
+
+      - name: Resolve release label
+        id: release_name
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ github.event.inputs.dryRun }}" == "true" ]]; then
+            echo "name=Release ${{ steps.release_tag.outputs.tag }} (staging)" >> "$GITHUB_OUTPUT"
+          else
+            echo "name=Release ${{ steps.release_tag.outputs.tag }}" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Build
         run: npm run build
 
@@ -64,7 +97,19 @@ jobs:
       - name: Prepare npm tarball
         run: npm run smoke:publication
 
+      - name: Verify npm token is configured
+        if: steps.publish_mode.outputs.run_publish == 'true'
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          if [[ -z "${NPM_TOKEN}" ]]; then
+            echo "Missing GitHub secret NPM_TOKEN."
+            echo "Please add it in repository Settings > Secrets and variables > Actions."
+            exit 1
+          fi
+
       - name: Publish to npm
+        if: steps.publish_mode.outputs.run_publish == 'true'
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: npm publish --access public
@@ -83,7 +128,8 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.release_tag.outputs.tag }}
-          name: Release ${{ steps.release_tag.outputs.tag }}
+          name: ${{ steps.release_name.outputs.name }}
+          prerelease: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.dryRun == 'true' }}
           generate_release_notes: true
           files: |
             ${{ steps.tgz.outputs.file }}
