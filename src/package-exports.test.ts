@@ -75,7 +75,7 @@ describe('package exports', () => {
     expect(packageJson.files).toContain('assets/fonts');
     expect(packageJson.files).toContain('bin/sitelen-layer-cli.mjs');
 
-    expect(packageJson.bin).toHaveProperty('sitelen-layer-cli', './bin/sitelen-layer-cli.mjs');
+    expect(packageJson.bin).toHaveProperty('sitelen-layer-cli', 'bin/sitelen-layer-cli.mjs');
 
     expect(existsSync(resolve(repoRoot, 'sitelen-pona-font.css'))).toBe(true);
     expect(existsSync(resolve(repoRoot, 'assets/fonts/sitelen-seli-kiwen-asuki.ttf'))).toBe(true);
