@@ -2,6 +2,8 @@
 
 Display-layer plugin for pages with toki pona content.
 
+Listed on ABVX Lab: https://lab.abvx.xyz/tools/sitelen-layer-plugin/
+
 It switches **one existing page copy** between:
 
 - latin (`TP`)
@@ -10,6 +12,12 @@ It switches **one existing page copy** between:
 
 `sitelen-layer-plugin` does **not** translate text from English or other languages.
 It only changes how existing toki pona content is displayed.
+
+## Related projects
+
+- `sitelen-emoji-truth` is the adjacent mapping/data layer: https://github.com/markoblogo/sitelen-emoji-truth
+- `toki-pona-translator` is a related application-layer repo: https://github.com/markoblogo/toki-pona-translator
+- `lab.abvx` catalogs this package, but it is a separate cluster from the AI coding tools stack: https://github.com/markoblogo/lab.abvx
 
 ---
 
