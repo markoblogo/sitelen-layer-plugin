@@ -19,6 +19,14 @@ It only changes how existing toki pona content is displayed.
 npm i sitelen-layer-plugin
 ```
 
+Python static-asset package:
+
+```bash
+pip install sitelen-layer-static
+```
+
+See [python/sitelen-layer-static](python/sitelen-layer-static) if you want to vendor the built JS/CSS/font assets into Django, Flask, FastAPI, or another Python deployment without requiring npm on the target system.
+
 Import the base styles and (for recommended sitelen pona rendering) font styles:
 
 ```ts
@@ -240,4 +248,3 @@ If your site has unusual selectors, run with a dedicated CSS pass to avoid overr
 
 - Docs: `docs/RELEASE_PIPELINE_SETUP.md` (workflow + secrets)
 - Release notes in `RELEASE_NOTES_v*` and `CHANGELOG.md`
-
